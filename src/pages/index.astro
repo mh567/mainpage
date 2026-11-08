@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import ProjectTile from '../components/ProjectTile.astro';
+import Timeline from '../components/Timeline.astro';
+
+const projects = (await getCollection('projects')).sort(
+  (a, b) =>
+    a.data.order - b.data.order ||
+    (b.data.started?.valueOf() ?? 0) - (a.data.started?.valueOf() ?? 0),
+);
+
+const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+
+const initial = 'H';
+---
+
+<Base title="harris" description="项目与短帖。">
+  <main class="stage">
+    <section class="glass panel" aria-label="动态">
+      <header class="panel-head">
+        <div class="avatar" aria-hidden="true">{initial}</div>
+        <div class="panel-id">
+          <h1 class="panel-name">harris</h1>
+          <p class="panel-sig">这是一个签名</p>
+        </div>
+        <a class="cta" href="/rss.xml">订阅</a>
+      </header>
+
+      <div class="panel-rule" aria-hidden="true"></div>
+
+      <div class="feed" tabindex="0">
+        <Timeline notes={notes} />
+      </div>
+    </section>
+
+    <section class="projects" aria-label="项目">
+      <div class="projects-head">
+        <p class="label">项目</p>
+        <span class="count">{projects.length}</span>
+      </div>
+
+      {
+        projects.length > 0 ? (
+          <div class="tiles">
+            {projects.map((project) => (
+              <ProjectTile project={project} />
+            ))}
+          </div>
+        ) : (
+          <p class="label">还没有项目。</p>
+        )
+      }
+    </section>
+  </main>
+</Base>

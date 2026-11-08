@@ -1,0 +1,82 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes', ({ data }) => !data.draft);
+  return notes.map((note) => ({
+    params: { id: note.id },
+    props: { note },
+  }));
+}
+
+const { note } = Astro.props;
+const { data, id } = note;
+const { Content } = await render(note);
+
+const dateFmt = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+---
+
+<Base
+  title={`${data.title ?? "短帖"} · harris`}
+  description={data.title ?? "一条短帖"}
+>
+  <main class="stage">
+    <article class="glass article">
+      <a class="article-back" href="/">← 返回</a>
+
+      <div class="article-meta">
+        <time datetime={data.date.toISOString()}>{dateFmt.format(data.date)}</time>
+        <span class="kind" data-kind={data.kind}>{data.kind}</span>
+      </div>
+
+      {data.title && <h1>{data.title}</h1>}
+
+      <div class="prose">
+        <Content />
+
+        {
+          data.images.length > 0 && (
+            <div class="note-images">
+              {data.images.map((src) => (
+                <img src={src} alt="" loading="lazy" />
+              ))}
+            </div>
+          )
+        }
+
+        {
+          data.link && (
+            <p>
+              <a
+                class="note-link"
+                href={data.link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {data.link}
+              </a>
+            </p>
+          )
+        }
+
+        {
+          data.tags.length > 0 && (
+            <div class="tags">
+              {data.tags.map((tag) => (
+                <span class="tag">{tag}</span>
+              ))}
+            </div>
+          )
+        }
+      </div>
+
+      <p class="perma-hint">/notes/{id}/</p>
+    </article>
+  </main>
+</Base>

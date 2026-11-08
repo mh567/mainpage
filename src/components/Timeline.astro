@@ -1,0 +1,22 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import NoteItem from './NoteItem.astro';
+
+interface Props {
+  notes: CollectionEntry<'notes'>[];
+}
+
+const { notes } = Astro.props;
+---
+
+{
+  notes.length === 0 ? (
+    <p class="count">还没有短帖。</p>
+  ) : (
+    <div class="timeline">
+      {notes.map((note) => (
+        <NoteItem note={note} />
+      ))}
+    </div>
+  )
+}

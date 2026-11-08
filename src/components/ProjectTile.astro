@@ -1,0 +1,43 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+}
+
+const { project } = Astro.props;
+const { data } = project;
+const primary = data.url ?? data.repo;
+const footText = data.tags.slice(0, 2).join(" / ");
+---
+
+{
+  primary ? (
+    <a class="tile" href={primary} target="_blank" rel="noopener noreferrer">
+      <div class="tile-top">
+        <span class="tile-title">{data.title}</span>
+        <span class="tile-status" data-status={data.status}>
+          {data.status}
+        </span>
+      </div>
+      <p class="tile-summary">{data.summary}</p>
+      <div class="tile-foot">
+        <span>{footText}</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </div>
+    </a>
+  ) : (
+    <div class="tile">
+      <div class="tile-top">
+        <span class="tile-title">{data.title}</span>
+        <span class="tile-status" data-status={data.status}>
+          {data.status}
+        </span>
+      </div>
+      <p class="tile-summary">{data.summary}</p>
+      <div class="tile-foot">
+        <span>{footText}</span>
+      </div>
+    </div>
+  )
+}

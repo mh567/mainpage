@@ -1,0 +1,43 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const site = Astro.site;
+const canonical = new URL(Astro.url.pathname, site ?? Astro.url);
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b1322" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="全部内容"
+      href="/rss.xml"
+    />
+    <link rel="me" href="https://github.com/mh567" />
+    <meta name="generator" content={Astro.generator} />
+  </head>
+  <body>
+    <slot />
+
+    <footer class="site-foot">
+      <span>© {year} harris</span>
+      <a href="/rss.xml">RSS</a>
+    </footer>
+  </body>
+</html>

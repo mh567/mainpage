@@ -1,0 +1,65 @@
+---
+import { render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  note: CollectionEntry<'notes'>;
+}
+
+const { note } = Astro.props;
+const { data, id } = note;
+const { Content } = await render(note);
+
+const dateFmt = new Intl.DateTimeFormat("zh-CN", {
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "UTC",
+});
+---
+
+<article class="note">
+  <div class="note-meta">
+    <time datetime={data.date.toISOString()}>{dateFmt.format(data.date)}</time>
+    <span class="kind" data-kind={data.kind}>{data.kind}</span>
+    <a class="note-permalink" href={`/notes/${id}/`} aria-label="永久链接">
+      #
+    </a>
+  </div>
+
+  <div class="note-body">
+    <Content />
+
+    {
+      data.images.length > 0 && (
+        <div class="note-images">
+          {data.images.map((src) => (
+            <img src={src} alt="" loading="lazy" />
+          ))}
+        </div>
+      )
+    }
+
+    {
+      data.link && (
+        <a
+          class="note-link"
+          href={data.link}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {data.link}
+        </a>
+      )
+    }
+
+    {
+      data.tags.length > 0 && (
+        <div class="tags">
+          {data.tags.map((tag) => (
+            <span class="tag">{tag}</span>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</article>
