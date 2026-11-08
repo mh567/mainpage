@@ -15,7 +15,7 @@ export async function GET(context) {
   }));
 
   return rss({
-    title: 'harris',
+    title: '个人主页',
     description: '个人项目与短帖',
     site: context.site ?? 'https://emolu.cn',
     items,
