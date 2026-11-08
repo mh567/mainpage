@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
-  <rect width="800" height="450" fill="#e8eef5"/>
-  <circle cx="640" cy="120" r="56" fill="#c9d8e8"/>
-  <path d="M0 360 L200 250 L380 320 L560 200 L800 300 L800 450 L0 450 Z" fill="#b6c9dd"/>
-  <text x="48" y="96" font-family="system-ui, sans-serif" font-size="30" fill="#5b6b7c">sample image</text>
-  <text x="48" y="136" font-family="system-ui, sans-serif" font-size="18" fill="#7d8d9e">public/uploads/sample.svg</text>
-</svg>

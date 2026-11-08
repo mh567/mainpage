@@ -14,14 +14,19 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
 );
 
-const initial = 'H';
 ---
 
 <Base title="个人主页" description="项目与短帖。">
   <main class="stage">
     <section class="glass panel" aria-label="动态">
       <header class="panel-head">
-        <div class="avatar" aria-hidden="true">{initial}</div>
+        <img
+          class="avatar-img"
+          src="/avatar.svg"
+          alt=""
+          width="40"
+          height="40"
+        />
         <div class="panel-id">
           <h1 class="panel-name">harris</h1>
           <p class="panel-sig">这是一个签名</p>
