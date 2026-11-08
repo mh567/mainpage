@@ -5,6 +5,6 @@ url: https://blog.emolu.cn
 repo: https://github.com/mh567/mh567.github.io
 tags: [Jekyll, SCSS, 博客]
 status: active
-order: 6
+order: 0
 started: 2026-10-31
 ---
