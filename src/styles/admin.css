@@ -628,6 +628,35 @@ body.admin [hidden] {
   letter-spacing: 0.02em;
 }
 
+/* 待提交栏：改动攒在本地，点这里才真正写回仓库 */
+.pending-bar {
+  position: sticky;
+  top: 52px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-input);
+  border: 1px solid rgba(228, 184, 99, 0.4);
+  background: rgba(228, 184, 99, 0.12);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+}
+
+.pending-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--champagne);
+  letter-spacing: 0.02em;
+}
+
+.pending-bar .ghost {
+  background: rgba(6, 10, 19, 0.5);
+}
+
 .list {
   display: flex;
   flex-direction: column;

@@ -7,6 +7,7 @@ import {
   type NoteDoc,
   type NoteMeta,
   type ProjectDoc,
+  type ProjectMeta,
   type ProjectStatus,
 } from '../lib/content';
 import {
@@ -21,6 +22,7 @@ import {
   verifyToken,
   writeBase64,
   writeText,
+  type CommitEntry,
   type CommitRef,
   type RemoteFile,
 } from '../lib/github';
@@ -1011,6 +1013,10 @@ async function deleteNote(item: RemoteFile & { doc: NoteDoc }): Promise<void> {
 
 const projectsList = el<HTMLDivElement>('projects-list');
 const projectsCount = el<HTMLSpanElement>('projects-count');
+const pendingBar = el<HTMLDivElement>('pending-bar');
+const pendingText = el<HTMLSpanElement>('pending-text');
+const btnDiscard = el<HTMLButtonElement>('btn-discard');
+const btnCommit = el<HTMLButtonElement>('btn-commit');
 const projectForm = el<HTMLFormElement>('project-form');
 const projectFormTitle = el<HTMLElement>('project-form-title');
 const projectTitle = el<HTMLInputElement>('project-title');
@@ -1019,12 +1025,17 @@ const projectSummary = el<HTMLInputElement>('project-summary');
 const projectUrl = el<HTMLInputElement>('project-url');
 const projectRepo = el<HTMLInputElement>('project-repo');
 const projectStatus = el<HTMLSelectElement>('project-status');
-const projectOrder = el<HTMLInputElement>('project-order');
 const projectStarted = el<HTMLInputElement>('project-started');
 const projectTags = el<HTMLInputElement>('project-tags');
 const projectCover = el<HTMLInputElement>('project-cover');
 const projectFeatured = el<HTMLInputElement>('project-featured');
 const projectBody = el<HTMLTextAreaElement>('project-body');
+
+/**
+ * 上次从仓库读到的项目文件原文，用来判断哪些真有改动。
+ * 空 sha 表示这是本地新建、仓库里还没有的文件。
+ */
+let projectsBaseline = new Map<string, { sha: string; text: string }>();
 
 async function loadProjects(): Promise<void> {
   if (!connected) return;
@@ -1040,13 +1051,84 @@ async function loadProjects(): Promise<void> {
         a.doc.meta.order - b.doc.meta.order ||
         a.doc.meta.title.localeCompare(b.doc.meta.title, 'zh-CN'),
     );
+
+    // 下标就是顺序。归一下号，避免文件里写的是 0/1/2/5 这种带空洞的值
+    loaded.forEach((item, index) => {
+      item.doc.meta.order = index;
+    });
+
     state.projects = loaded;
+    projectsBaseline = new Map(
+      loaded.map((item, index) => [
+        item.path,
+        { sha: item.sha, text: projectText(item, index) },
+      ]),
+    );
     renderProjects();
+    updatePendingBar();
   } catch (error) {
     notify(friendly(error), 'warn');
   } finally {
     setBusy(false);
   }
+}
+
+/** 每个项目文件在“当前顺序”下应该长什么样。 */
+function projectText(item: { doc: ProjectDoc }, index: number): string {
+  return serializeProject({
+    meta: { ...item.doc.meta, order: index },
+    body: item.doc.body,
+  });
+}
+
+interface ProjectChanges {
+  entries: CommitEntry[];
+  creates: number;
+  updates: number;
+  deletes: number;
+}
+
+function projectChanges(): ProjectChanges {
+  const entries: CommitEntry[] = [];
+  const seen = new Set<string>();
+  let creates = 0;
+  let updates = 0;
+  let deletes = 0;
+
+  state.projects.forEach((item, index) => {
+    const text = projectText(item, index);
+    const base = projectsBaseline.get(item.path);
+    seen.add(item.path);
+
+    if (!base) {
+      entries.push({ path: item.path, text });
+      creates += 1;
+    } else if (base.text !== text) {
+      entries.push({ path: item.path, text });
+      updates += 1;
+    }
+  });
+
+  for (const path of projectsBaseline.keys()) {
+    if (seen.has(path)) continue;
+    entries.push({ path, delete: true });
+    deletes += 1;
+  }
+
+  return { entries, creates, updates, deletes };
+}
+
+function updatePendingBar(): void {
+  const { entries, creates, updates, deletes } = projectChanges();
+  pendingBar.hidden = entries.length === 0;
+  if (entries.length === 0) return;
+
+  const parts: string[] = [];
+  if (creates) parts.push(`新增 ${creates}`);
+  if (updates) parts.push(`修改 ${updates}`);
+  if (deletes) parts.push(`删除 ${deletes}`);
+  pendingText.textContent = `${parts.join(' · ')}，共 ${entries.length} 处待提交`;
+  btnCommit.disabled = false;
 }
 
 function renderProjects(): void {
@@ -1086,6 +1168,19 @@ function renderProjects(): void {
     status.textContent = STATUS_LABELS[item.doc.meta.status];
 
     head.append(grip, order, title, status);
+
+    const base = projectsBaseline.get(item.path);
+    if (!base) {
+      const tag = document.createElement('span');
+      tag.className = 'draft-tag';
+      tag.textContent = '新增';
+      head.append(tag);
+    } else if (base.text !== projectText(item, index)) {
+      const tag = document.createElement('span');
+      tag.className = 'draft-tag';
+      tag.textContent = '已改';
+      head.append(tag);
+    }
 
     const summary = document.createElement('p');
     summary.className = 'card-body';
@@ -1149,72 +1244,22 @@ function bindProjectSort(card: HTMLElement, index: number): void {
       projectDragIndex ?? Number(event.dataTransfer?.getData('text/plain'));
     projectDragIndex = null;
     if (!Number.isInteger(from)) return;
-    void applyProjectOrder(from, index);
+    moveProject(from, index);
   });
 }
 
-async function applyProjectOrder(from: number, to: number): Promise<void> {
+/** 拖拽只改本地顺序，不提交。 */
+function moveProject(from: number, to: number): void {
   if (from === to || to < 0 || to >= state.projects.length) return;
-  if (state.busy) return;
-
-  const previous = [...state.projects];
   const next = [...state.projects];
   const [moved] = next.splice(from, 1);
   next.splice(to, 0, moved);
-
-  // 顺序就是数组下标，重新编号后再和原值比较，只改真正变了的文件
-  const changes = next
-    .map((item, order) => ({ item, order }))
-    .filter(({ item, order }) => item.doc.meta.order !== order);
-
-  if (changes.length === 0) return;
-
-  state.projects = next.map((item, order) => ({
-    ...item,
-    doc: { ...item.doc, meta: { ...item.doc.meta, order } },
-  }));
+  next.forEach((item, index) => {
+    item.doc.meta.order = index;
+  });
+  state.projects = next;
   renderProjects();
-  announce('正在保存顺序…');
-  setBusy(true);
-
-  try {
-    const commit = await commitFiles(
-      token,
-      changes.map(({ item, order }) => ({
-        path: item.path,
-        text: serializeProject({
-          meta: { ...item.doc.meta, order },
-          body: item.doc.body,
-        }),
-      })),
-      `调整项目顺序（${moved.doc.meta.title} 移到第 ${to + 1} 位）`,
-    );
-    watchDeploy(commit, '顺序已保存', { href: '/', label: '看首页' });
-  } catch (error) {
-    // Git Data API 有时会被 token 权限挡住，退回一次一个文件
-    try {
-      let last: CommitRef = { sha: '', htmlUrl: '' };
-      for (const { item, order } of changes) {
-        last = await writeText(
-          token,
-          item.path,
-          serializeProject({
-            meta: { ...item.doc.meta, order },
-            body: item.doc.body,
-          }),
-          `调整项目顺序：${item.doc.meta.title} → 第 ${order + 1} 位`,
-        );
-      }
-      watchDeploy(last, '顺序已保存', { href: '/', label: '看首页' });
-    } catch (fallbackError) {
-      state.projects = previous;
-      renderProjects();
-      notify(friendly(fallbackError), 'warn');
-      announce('顺序保存失败', 'warn');
-    }
-  } finally {
-    setBusy(false);
-  }
+  updatePendingBar();
 }
 
 function startEditProject(item: RemoteFile & { doc: ProjectDoc }): void {
@@ -1228,7 +1273,6 @@ function startEditProject(item: RemoteFile & { doc: ProjectDoc }): void {
   projectUrl.value = meta.url;
   projectRepo.value = meta.repo;
   projectStatus.value = meta.status;
-  projectOrder.value = String(meta.order);
   projectStarted.value = meta.started;
   projectTags.value = meta.tags.join(' ');
   projectCover.value = meta.cover;
@@ -1243,7 +1287,8 @@ function resetProjectForm(): void {
   projectForm.reset();
   projectForm.hidden = true;
   projectFile.disabled = false;
-  el<HTMLParagraphElement>('project-hint').textContent = '保存后约 1 分钟生效';
+  el<HTMLParagraphElement>('project-hint').textContent =
+    '改动先在本地攒着，确认后统一提交';
 }
 
 el<HTMLButtonElement>('btn-new-project').addEventListener('click', () => {
@@ -1251,7 +1296,6 @@ el<HTMLButtonElement>('btn-new-project').addEventListener('click', () => {
   projectForm.hidden = false;
   projectFormTitle.textContent = '新建项目';
   projectFile.disabled = false;
-  projectOrder.value = String(state.projects.length);
   projectStarted.value = todayIso();
   projectTitle.focus();
   projectForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1261,17 +1305,11 @@ el<HTMLButtonElement>('project-cancel').addEventListener('click', resetProjectFo
 
 projectForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  void saveProject();
+  stageProject();
 });
 
-async function saveProject(): Promise<void> {
-  if (state.busy) return;
-  if (!connected) {
-    notify('先连接 GitHub', 'warn');
-    openSettings();
-    return;
-  }
-
+/** 表单内容并入工作副本，此时不碰网络。 */
+function stageProject(): void {
   const title = projectTitle.value.trim();
   if (!title) {
     notify('项目名称不能为空', 'warn');
@@ -1279,85 +1317,144 @@ async function saveProject(): Promise<void> {
     return;
   }
 
-  const doc: ProjectDoc = {
-    meta: {
-      title,
-      summary: projectSummary.value.trim(),
-      url: projectUrl.value.trim(),
-      repo: projectRepo.value.trim(),
-      tags: parseTags(projectTags.value),
-      status: projectStatus.value as ProjectStatus,
-      featured: projectFeatured.checked,
-      order: Number(projectOrder.value) || 0,
-      started: projectStarted.value,
-      cover: projectCover.value.trim(),
-    },
-    body: projectBody.value.trim(),
+  const meta: ProjectMeta = {
+    title,
+    summary: projectSummary.value.trim(),
+    url: projectUrl.value.trim(),
+    repo: projectRepo.value.trim(),
+    tags: parseTags(projectTags.value),
+    status: projectStatus.value as ProjectStatus,
+    featured: projectFeatured.checked,
+    order: 0,
+    started: projectStarted.value,
+    cover: projectCover.value.trim(),
   };
+  const body = projectBody.value.trim();
 
-  setBusy(true);
-  announce('正在保存项目…');
-  try {
-    let commit: CommitRef;
-    let done: string;
-
-    if (state.editingProject) {
-      commit = await writeText(
-        token,
-        state.editingProject.path,
-        serializeProject(doc),
-        `更新项目 ${title}`,
-        state.editingProject.sha,
-      );
-      done = '项目已更新';
-    } else {
-      const raw = projectFile.value.trim() || title;
-      const base = slugify(raw, 'project');
-      const existing = new Set(
-        state.projects.map((item) => item.name.replace(/\.md$/, '')),
-      );
-      const name = `${uniqueName(base, existing)}.md`;
-      commit = await writeText(
-        token,
-        `${PROJECTS_DIR}/${name}`,
-        serializeProject(doc),
-        `新增项目 ${title}`,
-      );
-      done = '项目已创建';
+  if (state.editingProject) {
+    const index = state.projects.findIndex(
+      (entry) => entry.path === state.editingProject?.path,
+    );
+    if (index === -1) {
+      resetProjectForm();
+      notify('这个项目已不在列表里', 'warn');
+      return;
     }
+    const current = state.projects[index];
+    state.projects[index] = {
+      ...current,
+      doc: { meta: { ...meta, order: current.doc.meta.order }, body },
+    };
+    notify('已加入待提交');
+  } else {
+    const raw = projectFile.value.trim() || title;
+    const base = slugify(raw, 'project');
+    const existing = new Set(
+      state.projects.map((item) => item.name.replace(/\.md$/, '')),
+    );
+    const name = `${uniqueName(base, existing)}.md`;
 
-    resetProjectForm();
-    await loadProjects();
-    watchDeploy(commit, done, { href: '/', label: '看首页' });
-  } catch (error) {
-    notify(friendly(error), 'warn');
-    announce('保存失败', 'warn');
-  } finally {
-    setBusy(false);
+    state.projects.push({
+      name,
+      path: `${PROJECTS_DIR}/${name}`,
+      sha: '',
+      doc: { meta: { ...meta, order: state.projects.length }, body },
+    });
+    notify('已加入待提交');
   }
+
+  state.projects.forEach((item, index) => {
+    item.doc.meta.order = index;
+  });
+
+  resetProjectForm();
+  renderProjects();
+  updatePendingBar();
 }
 
-async function deleteProject(item: RemoteFile & { doc: ProjectDoc }): Promise<void> {
-  if (!window.confirm(`删除项目「${item.doc.meta.title}」？\n\n这个操作会直接提交到仓库。`)) {
+function deleteProject(item: RemoteFile & { doc: ProjectDoc }): void {
+  if (
+    !window.confirm(
+      `把「${item.doc.meta.title}」标记为删除？\n\n点「提交并部署」后才真正生效。`,
+    )
+  ) {
     return;
   }
 
+  state.projects = state.projects.filter((entry) => entry.path !== item.path);
+  state.projects.forEach((entry, index) => {
+    entry.doc.meta.order = index;
+  });
+  if (state.editingProject?.path === item.path) resetProjectForm();
+  renderProjects();
+  updatePendingBar();
+  notify('已标记删除，提交后生效');
+}
+
+el<HTMLButtonElement>('btn-discard').addEventListener('click', () => {
+  if (!window.confirm('放弃所有未提交的项目改动？')) return;
+  resetProjectForm();
+  void loadProjects();
+  notify('已放弃改动');
+});
+
+el<HTMLButtonElement>('btn-commit').addEventListener('click', () => {
+  void commitProjects();
+});
+
+async function commitProjects(): Promise<void> {
+  if (state.busy) return;
+  if (!connected) {
+    notify('先连接 GitHub', 'warn');
+    openSettings();
+    return;
+  }
+
+  const { entries, creates, updates, deletes } = projectChanges();
+  if (entries.length === 0) {
+    notify('没有待提交的改动');
+    return;
+  }
+
+  const parts: string[] = [];
+  if (creates) parts.push(`新增 ${creates}`);
+  if (updates) parts.push(`修改 ${updates}`);
+  if (deletes) parts.push(`删除 ${deletes}`);
+  const message = `项目更新（${parts.join('，')}）`;
+
   setBusy(true);
-  announce('正在删除…');
+  btnCommit.disabled = true;
   try {
-    const commit = await removeFile(
-      token,
-      item.path,
-      `删除项目 ${item.doc.meta.title}`,
-      item.sha,
-    );
-    state.projects = state.projects.filter((entry) => entry.path !== item.path);
-    if (state.editingProject?.path === item.path) resetProjectForm();
-    renderProjects();
-    watchDeploy(commit, '已删除', { href: '/', label: '看首页' });
+    const commit = await commitFiles(token, entries, message);
+    await loadProjects();
+    watchDeploy(commit, '项目已更新', { href: '/', label: '看首页' });
   } catch (error) {
-    notify(friendly(error), 'warn');
-    announce('删除失败', 'warn');
+    // Git Data API 有时会被 token 权限挡住，退回逐个文件
+    try {
+      let last: CommitRef = { sha: '', htmlUrl: '' };
+      for (const entry of entries) {
+        if (entry.delete) {
+          const base = projectsBaseline.get(entry.path);
+          if (!base?.sha) continue;
+          last = await removeFile(token, entry.path, message, base.sha);
+        } else {
+          const base = projectsBaseline.get(entry.path);
+          last = await writeText(
+            token,
+            entry.path,
+            entry.text ?? '',
+            message,
+            base?.sha,
+          );
+        }
+      }
+      await loadProjects();
+      watchDeploy(last, '项目已更新', { href: '/', label: '看首页' });
+    } catch (fallbackError) {
+      notify(friendly(fallbackError), 'warn');
+      announce('提交失败', 'warn');
+      btnCommit.disabled = false;
+    }
   } finally {
     setBusy(false);
   }
@@ -1434,6 +1531,13 @@ function boot(): void {
     await Promise.all([loadNotes(), loadProjects()]);
   })();
 }
+
+// 有没提交的项目改动时，关页面或刷新前提醒一句
+window.addEventListener('beforeunload', (event) => {
+  if (projectChanges().entries.length === 0) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
 
 window.addEventListener('pagehide', () => {
   stopDeployWatch();

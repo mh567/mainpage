@@ -167,16 +167,13 @@ const tabs = [
                 ))}
               </select>
             </label>
-            <input id="project-order" type="hidden" value="0" />
             <label class="field">
               <span>开始时间</span>
               <input id="project-started" type="date" />
             </label>
           </div>
 
-          <p class="hint">
-            顺序在项目列表里拖拽调整，这里的数字只用来记录位置。
-          </p>
+          <p class="hint">顺序在项目列表里拖拽调整。</p>
 
           <div class="field-row">
             <label class="field">
@@ -202,11 +199,18 @@ const tabs = [
           </div>
 
           <div class="compose-bar">
-            <span class="hint" id="project-hint">保存后约 1 分钟生效</span>
+            <span class="hint" id="project-hint">改动先在本地攒着，确认后统一提交</span>
             <span class="spacer"></span>
-            <button type="submit" class="cta">保存项目</button>
+            <button type="submit" class="cta" id="project-save">加入待提交</button>
           </div>
         </form>
+
+        <div class="pending-bar" id="pending-bar" hidden>
+          <span class="pending-text" id="pending-text">有改动待提交</span>
+          <span class="spacer"></span>
+          <button type="button" class="ghost small" id="btn-discard">全部放弃</button>
+          <button type="button" class="cta small" id="btn-commit">提交并部署</button>
+        </div>
 
         <div class="list-head">
           <span class="label">项目</span>

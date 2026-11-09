@@ -185,16 +185,24 @@ export async function writeBase64(
   return toCommitRef(data, path);
 }
 
+export interface CommitEntry {
+  path: string;
+  /** 有 text 就写入，delete 为 true 就删掉这个文件 */
+  text?: string;
+  delete?: boolean;
+}
+
 /**
- * 一次提交写多个文件。排序会同时改好几个 .md，逐个提交会刷出一堆 commit。
+ * 一次提交写多个文件。排序、批量编辑会同时改好几个 .md，
+ * 逐个提交会刷出一堆 commit，也就会触发一堆部署。
  * 走 Git Data API：base tree → 新 tree → commit → 更新分支引用。
  */
 export async function commitFiles(
   token: string,
-  files: Array<{ path: string; text: string }>,
+  entries: CommitEntry[],
   message: string,
 ): Promise<CommitRef> {
-  if (files.length === 0) {
+  if (entries.length === 0) {
     return { sha: '', htmlUrl: `https://github.com/${OWNER}/${REPO}/commits/${BRANCH}` };
   }
 
@@ -216,12 +224,17 @@ export async function commitFiles(
       method: 'POST',
       body: {
         base_tree: commit.tree.sha,
-        tree: files.map((file) => ({
-          path: file.path,
-          mode: '100644',
-          type: 'blob',
-          content: file.text,
-        })),
+        tree: entries.map((entry) =>
+          entry.delete
+            ? // tree 里 sha 为 null 表示删除这个路径
+              { path: entry.path, mode: '100644', type: 'blob', sha: null }
+            : {
+                path: entry.path,
+                mode: '100644',
+                type: 'blob',
+                content: entry.text ?? '',
+              },
+        ),
       },
     },
   );
