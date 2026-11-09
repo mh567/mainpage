@@ -207,6 +207,8 @@ async function connect(candidate: string): Promise<boolean> {
   try {
     const ok = await verifyToken(value);
     if (!ok) {
+      connected = false;
+      setProjectToolsEnabled(false);
       announce('Token 缺少写入权限', 'warn');
       settingsHint.textContent = '这个 token 能读但不能写，需要 Contents: Read and write。';
       return false;
@@ -216,9 +218,11 @@ async function connect(candidate: string): Promise<boolean> {
     connected = true;
     persistToken(value);
     announce('已连接', 'ok');
+    setProjectToolsEnabled(true);
     return true;
   } catch (error) {
     connected = false;
+    setProjectToolsEnabled(false);
     announce('连接失败', 'warn');
     settingsHint.textContent = friendly(error);
     return false;
@@ -1038,6 +1042,8 @@ const pendingBar = el<HTMLDivElement>('pending-bar');
 const pendingText = el<HTMLSpanElement>('pending-text');
 const btnDiscard = el<HTMLButtonElement>('btn-discard');
 const btnCommit = el<HTMLButtonElement>('btn-commit');
+const newProjectButton = el<HTMLButtonElement>('btn-new-project');
+const projectSave = el<HTMLButtonElement>('project-save');
 const projectForm = el<HTMLFormElement>('project-form');
 const projectFormTitle = el<HTMLElement>('project-form-title');
 const projectTitle = el<HTMLInputElement>('project-title');
@@ -1149,7 +1155,8 @@ function updatePendingBar(): void {
   if (updates) parts.push(`修改 ${updates}`);
   if (deletes) parts.push(`删除 ${deletes}`);
   pendingText.textContent = `${parts.join(' · ')}，共 ${entries.length} 处待提交`;
-  btnCommit.disabled = false;
+  // 没连上时提交不了，按钮保持禁用
+  btnCommit.disabled = !connected;
 }
 
 function renderProjects(): void {
@@ -1312,7 +1319,7 @@ function resetProjectForm(): void {
     '改动先在本地攒着，确认后统一提交';
 }
 
-el<HTMLButtonElement>('btn-new-project').addEventListener('click', () => {
+newProjectButton.addEventListener('click', () => {
   resetProjectForm();
   projectForm.hidden = false;
   projectFormTitle.textContent = '新建项目';
@@ -1483,6 +1490,33 @@ async function commitProjects(): Promise<void> {
 
 /* ---------------- settings ---------------- */
 
+/** 面板关闭后，如果还没连上，状态栏要说清楚现在不能改内容。 */
+function noteDisconnected(): void {
+  if (connected) return;
+  announce(
+    token ? '未连接，点「设置」重新连接' : '未连接，点「设置」填 token',
+    'warn',
+  );
+}
+
+/** 没连上时不让改内容，改了也提交不了，只会白费功夫。 */
+function setProjectToolsEnabled(enabled: boolean): void {
+  newProjectButton.disabled = !enabled;
+  projectSave.disabled = !enabled;
+  publishButton.disabled = !enabled;
+  newProjectButton.title = enabled ? '' : '先连接 GitHub';
+  publishButton.title = enabled ? '' : '先连接 GitHub';
+  // 提交按钮还受“有没有待提交改动”影响，交给 updatePendingBar 决定
+  if (!enabled) btnCommit.disabled = true;
+  else updatePendingBar();
+}
+
+function closeSettings(): void {
+  if (typeof settingsDialog.close === 'function') settingsDialog.close();
+  else settingsDialog.removeAttribute('open');
+  noteDisconnected();
+}
+
 function openSettings(errorText = ''): void {
   tokenInput.value = token;
   rememberInput.checked = Boolean(localStorage.getItem(TOKEN_KEY)) || !token;
@@ -1494,8 +1528,32 @@ function openSettings(errorText = ''): void {
 
 el<HTMLButtonElement>('btn-settings').addEventListener('click', () => openSettings());
 
+el<HTMLButtonElement>('btn-close-settings').addEventListener('click', closeSettings);
+
+// 点面板外的遮罩也能关，习惯上大家会这么退出
+settingsDialog.addEventListener('click', (event) => {
+  if (event.target !== settingsDialog) return;
+  const rect = settingsDialog.getBoundingClientRect();
+  const inside =
+    event.clientX >= rect.left &&
+    event.clientX <= rect.right &&
+    event.clientY >= rect.top &&
+    event.clientY <= rect.bottom;
+  if (!inside) closeSettings();
+});
+
+// Esc 关闭时同样要更新状态栏
+settingsDialog.addEventListener('close', noteDisconnected);
+
 el<HTMLFormElement>('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault();
+
+  // 连接成功后会从仓库重新读取项目，本地攒的改动会被覆盖，先问一句
+  const dirty = projectChanges().entries.length > 0;
+  if (dirty && !window.confirm('连接后会从仓库重新加载项目，本地未提交的改动会丢失。继续？')) {
+    return;
+  }
+
   const ok = await connect(tokenInput.value);
   if (ok) {
     settingsDialog.close();
@@ -1514,6 +1572,7 @@ el<HTMLButtonElement>('btn-forget').addEventListener('click', () => {
   state.projects = [];
   renderNotes();
   renderProjects();
+  setProjectToolsEnabled(false);
   announce('未连接', 'idle');
   settingsHint.textContent = '已清除，本浏览器不再保存 token。';
 });
@@ -1531,6 +1590,7 @@ el<HTMLButtonElement>('btn-refresh').addEventListener('click', () => {
 function boot(): void {
   renderImages();
   loadDraft();
+  setProjectToolsEnabled(false);
 
   // 会话级 token 不能被启动时的自动连接悄悄升级成持久保存
   rememberInput.checked = Boolean(storedToken) || !token;

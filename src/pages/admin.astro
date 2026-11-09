@@ -32,7 +32,9 @@ const tabs = [
   <body class="admin">
     <header class="admin-bar">
       <div class="admin-brand">
-        <img class="admin-avatar" src="/avatar.png" alt="" width="28" height="28" />
+        <a class="admin-home" href="/" aria-label="返回主页" title="返回主页">
+          <img class="admin-avatar" src="/avatar.png" alt="" width="28" height="28" />
+        </a>
         <div class="admin-id">
           <span class="admin-name">内容管理</span>
           <span class="admin-status" id="status-line" data-tone="idle">未连接</span>
@@ -224,6 +226,15 @@ const tabs = [
     </main>
 
     <dialog class="sheet" id="settings">
+      <button
+        type="button"
+        class="sheet-close"
+        id="btn-close-settings"
+        aria-label="关闭"
+        title="关闭"
+      >
+        ×
+      </button>
       <form id="settings-form" autocomplete="off">
         <h2>连接 GitHub</h2>
         <p class="hint">
