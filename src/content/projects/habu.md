@@ -5,6 +5,7 @@ url: https://habu.emolu.cn/demo/
 repo: https://github.com/mh567/habu
 tags: [工作台]
 status: active
+order: 1
 started: 2026-11-08
 ---
 
