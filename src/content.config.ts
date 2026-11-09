@@ -23,18 +23,17 @@ const projects = defineCollection({
 });
 
 /**
- * 短帖。字段对齐 JSON Feed 1.1 与 Memos 的 Memo 结构：
- * date / content(正文) / images[] / kind / tags。
- * 之后若把数据源换成 Memos，渲染层不用改。
+ * 短帖。一条随记就是一段正文，图片、外链、标签都是它的元素，
+ * 不区分类型。字段对齐 JSON Feed 1.1 与 Memos 的 Memo 结构：
+ * date / content(正文) / images[] / tags。
  */
 const notes = defineCollection({
   loader: glob({ base: './src/content/notes', pattern: '**/*.md' }),
   schema: z.object({
     date: z.coerce.date(),
-    kind: z.enum(['note', 'link', 'photo', 'quote', 'release']).default('note'),
     tags: z.array(z.string()).default([]),
     images: z.array(z.string()).default([]),
-    link: z.url().optional(), // kind=link 时指向的外部地址
+    link: z.url().optional(), // 正文里附带的外部地址
     title: z.string().optional(), // 可选标题，短帖通常不写
     draft: z.boolean().default(false),
   }),

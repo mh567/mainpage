@@ -1,6 +1,5 @@
 ---
 date: 2026-11-07
-kind: link
 tags: [Astro, 阅读]
 link: https://docs.astro.build/en/guides/content-collections/
 ---

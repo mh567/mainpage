@@ -7,7 +7,7 @@ export async function GET(context) {
   );
 
   const items = notes.map((note) => ({
-    title: note.data.title ?? `${note.data.kind} · ${note.id}`,
+    title: note.data.title ?? `短帖 · ${note.id}`,
     pubDate: note.data.date,
     link: `/notes/${note.id}/`,
     description: note.body?.trim() ?? '',

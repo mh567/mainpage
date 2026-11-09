@@ -1,0 +1,293 @@
+---
+import '../styles/global.css';
+import '../styles/admin.css';
+import { PROJECT_STATUSES } from '../lib/content';
+
+const STATUS_LABELS: Record<string, string> = {
+  active: '进行中',
+  maintained: '维护中',
+  wip: '开发中',
+  archived: '已归档',
+};
+
+const tabs = [
+  { id: 'compose', label: '发帖' },
+  { id: 'notes', label: '短帖' },
+  { id: 'projects', label: '项目' },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b1322" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>内容管理</title>
+  </head>
+  <body class="admin">
+    <header class="admin-bar">
+      <div class="admin-brand">
+        <img class="admin-avatar" src="/avatar.png" alt="" width="28" height="28" />
+        <div class="admin-id">
+          <span class="admin-name">内容管理</span>
+          <span class="admin-status" id="status-line" data-tone="idle">未连接</span>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <button type="button" class="ghost small" id="btn-refresh">刷新</button>
+        <button type="button" class="ghost small" id="btn-settings">设置</button>
+      </div>
+    </header>
+
+    <nav class="admin-tabs" role="tablist" aria-label="管理分区">
+      {
+        tabs.map((tab, index) => (
+          <button
+            type="button"
+            class:list={['tab', { 'is-active': index === 0 }]}
+            role="tab"
+            aria-selected={index === 0 ? 'true' : 'false'}
+            data-pane={tab.id}
+          >
+            {tab.label}
+            {tab.id === 'notes' && <span class="tab-count" id="notes-count" />}
+          </button>
+        ))
+      }
+    </nav>
+
+    <main class="admin-main">
+      <section class="pane" id="pane-compose" role="tabpanel">
+        <form class="compose glass" id="compose-form" autocomplete="off">
+          <div class="compose-head">
+            <input class="title-input" id="compose-title" placeholder="写点什么…" />
+            <input class="date-input" id="compose-date" type="date" aria-label="日期" />
+          </div>
+
+          <textarea
+            id="compose-body"
+            class="body-input"
+            rows="5"
+            placeholder="正文。可以直接粘贴图片，也可以拖进来。"
+          ></textarea>
+
+          <div class="media-drop" id="media-drop">
+            <div class="thumbs" id="compose-images" hidden></div>
+            <p class="media-hint" id="media-hint">
+              点「添加图片」、粘贴或拖进来。多图可拖拽调整顺序。
+            </p>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>标签</span>
+              <input id="compose-tags" placeholder="用空格或逗号分隔" />
+            </label>
+            <label class="field">
+              <span>外部链接（可选）</span>
+              <input id="compose-link" type="url" placeholder="https://" />
+            </label>
+          </div>
+
+          <div class="compose-bar">
+            <label class="ghost small upload">
+              <input id="upload-input" type="file" accept="image/*" multiple hidden />
+              添加图片
+            </label>
+            <label class="check">
+              <input type="checkbox" id="compose-draft" />
+              存为草稿
+            </label>
+            <span class="spacer"></span>
+            <button type="button" class="ghost small" id="btn-cancel-edit" hidden>
+              取消编辑
+            </button>
+            <button type="submit" class="cta" id="btn-publish">发布</button>
+          </div>
+
+          <p class="hint" id="compose-hint">⌘ / Ctrl + Enter 立即发布</p>
+        </form>
+      </section>
+
+      <section class="pane" id="pane-notes" role="tabpanel" hidden>
+        <div class="list" id="notes-list"></div>
+      </section>
+
+      <section class="pane" id="pane-projects" role="tabpanel" hidden>
+        <form class="compose glass" id="project-form" autocomplete="off" hidden>
+          <div class="compose-head">
+            <strong id="project-form-title">编辑项目</strong>
+            <button type="button" class="ghost small" id="project-cancel">取消</button>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>名称</span>
+              <input id="project-title" required />
+            </label>
+            <label class="field">
+              <span>文件名</span>
+              <input id="project-file" placeholder="例如 habu" />
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>一句话简介</span>
+              <input id="project-summary" />
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>线上地址</span>
+              <input id="project-url" type="url" placeholder="https://" />
+            </label>
+            <label class="field">
+              <span>仓库地址</span>
+              <input id="project-repo" type="url" placeholder="https://" />
+            </label>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>状态</span>
+              <select id="project-status">
+                {PROJECT_STATUSES.map((status) => (
+                  <option value={status}>{STATUS_LABELS[status]}</option>
+                ))}
+              </select>
+            </label>
+            <input id="project-order" type="hidden" value="0" />
+            <label class="field">
+              <span>开始时间</span>
+              <input id="project-started" type="date" />
+            </label>
+          </div>
+
+          <p class="hint">
+            顺序在项目列表里拖拽调整，这里的数字只用来记录位置。
+          </p>
+
+          <div class="field-row">
+            <label class="field">
+              <span>标签</span>
+              <input id="project-tags" placeholder="用空格或逗号分隔" />
+            </label>
+            <label class="field">
+              <span>封面</span>
+              <input id="project-cover" placeholder="/uploads/xxx.png" />
+            </label>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" id="project-featured" />
+            首页精选
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>详细介绍（可选）</span>
+              <textarea id="project-body" rows="4"></textarea>
+            </label>
+          </div>
+
+          <div class="compose-bar">
+            <span class="hint" id="project-hint">保存后约 1 分钟生效</span>
+            <span class="spacer"></span>
+            <button type="submit" class="cta">保存项目</button>
+          </div>
+        </form>
+
+        <div class="list-head">
+          <span class="label">项目</span>
+          <span class="spacer"></span>
+          <span class="hint">拖动卡片调整顺序</span>
+          <button type="button" class="cta small" id="btn-new-project">新建项目</button>
+        </div>
+        <div class="list" id="projects-list"></div>
+      </section>
+    </main>
+
+    <dialog class="sheet" id="settings">
+      <form id="settings-form" autocomplete="off">
+        <h2>连接 GitHub</h2>
+        <p class="hint">
+          后台直接读写仓库里的 Markdown，不需要服务器。Token 只会发往 GitHub。
+        </p>
+
+        <p class="steps-title">细粒度 token（推荐）</p>
+        <a class="ghost small token-create" id="btn-create-token" href="#" target="_blank" rel="noopener noreferrer">
+          打开预填好的创建页
+        </a>
+        <ol class="steps">
+          <li>在上面打开的页面里，名称、有效期和 Contents 权限已经填好</li>
+          <li>
+            Repository access 选 <strong>Only select repositories</strong>，勾上
+            <code>mh567/mainpage</code>
+          </li>
+          <li>
+            在 Permissions → Repository permissions 里确认 <strong>Contents</strong>
+            是 <code>Read and write</code>，点 Generate token
+          </li>
+          <li>把生成的 <code>github_pat_…</code> 粘贴到下面</li>
+        </ol>
+        <p class="hint">
+          新版页面的权限是每行一个下拉，不会单独列出「Read and write」。Contents
+          选到 <code>Read and write</code> 就是最高一档，它自带读权限。
+        </p>
+
+        <p class="steps-title">classic token</p>
+        <ol class="steps">
+          <li>
+            用
+            <a
+              href="https://github.com/settings/tokens/new?scopes=repo&description=emolu%20admin"
+              target="_blank"
+              rel="noopener noreferrer">Tokens (classic)</a
+            >
+            生成，勾选 <code>repo</code> 这一项就够
+          </li>
+          <li>把生成的 <code>ghp_…</code> 粘贴到下面</li>
+        </ol>
+
+        <label class="field">
+          <span>Token</span>
+          <input
+            id="token-input"
+            type="password"
+            placeholder="github_pat_… 或 ghp_…"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </label>
+        <label class="check">
+          <input type="checkbox" id="token-remember" checked />
+          记住这台设备
+        </label>
+        <p class="hint">
+          取消勾选后，token 只保留在当前标签页里，刷新还在，关掉标签页就失效。
+        </p>
+        <p class="hint" id="settings-hint"></p>
+        <div class="sheet-actions">
+          <button type="button" class="ghost" id="btn-forget">清除</button>
+          <button type="submit" class="cta" id="btn-save-token">保存并连接</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">
+      <span id="toast-text"></span>
+      <a id="toast-link" href="#" target="_blank" rel="noopener noreferrer" hidden>查看提交</a>
+    </div>
+
+    <script>
+      import '../scripts/admin';
+    </script>
+  </body>
+</html>

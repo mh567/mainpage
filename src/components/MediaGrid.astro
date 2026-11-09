@@ -1,0 +1,46 @@
+---
+/**
+ * 朋友圈式图片排版。
+ * 1 张：单图限宽限高，不占满整屏。
+ * 2 张：并排两列。
+ * 3 张：三列。
+ * 4 张：2x2。
+ * 5 张及以上：三列，右下角叠「+N」。
+ * 顺序完全由 images 数组决定，后台可以拖拽调整。
+ */
+interface Props {
+  images: string[];
+  alt?: string;
+  linkTo?: string;
+  max?: number;
+}
+
+const { images, alt = '', linkTo, max } = Astro.props;
+const total = images.length;
+const shown = max && total > max ? images.slice(0, max) : images;
+const overflow = max && total > max ? total - max : 0;
+
+const count = shown.length;
+const layout =
+  count === 1 ? 'single' : count === 2 ? 'duo' : count === 4 ? 'quad' : 'grid';
+---
+
+{
+  count > 0 && (
+    <div class="media" data-layout={layout} data-count={count}>
+      {shown.map((src, index) => {
+        const img = (
+          <img src={src} alt={alt} loading="lazy" decoding="async" />
+        );
+        return (
+          <figure class="media-cell">
+            {linkTo ? <a href={linkTo}>{img}</a> : img}
+            {overflow > 0 && index === shown.length - 1 && (
+              <span class="media-more">+{overflow}</span>
+            )}
+          </figure>
+        );
+      })}
+    </div>
+  )
+}

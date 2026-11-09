@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import MediaGrid from '../../components/MediaGrid.astro';
 
 export async function getStaticPaths() {
   const notes = await getCollection('notes', ({ data }) => !data.draft);
@@ -32,7 +33,6 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
 
       <div class="article-meta">
         <time datetime={data.date.toISOString()}>{dateFmt.format(data.date)}</time>
-        <span class="kind" data-kind={data.kind}>{data.kind}</span>
       </div>
 
       {data.title && <h1>{data.title}</h1>}
@@ -40,15 +40,7 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
       <div class="prose">
         <Content />
 
-        {
-          data.images.length > 0 && (
-            <div class="note-images">
-              {data.images.map((src) => (
-                <img src={src} alt="" loading="lazy" />
-              ))}
-            </div>
-          )
-        }
+        <MediaGrid images={data.images} />
 
         {
           data.link && (

@@ -274,20 +274,6 @@ a:hover {
   color: var(--muted);
 }
 
-.kind {
-  display: inline-block;
-  align-self: flex-start;
-  padding: 1px 8px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--r-pill);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  line-height: 1.9;
-}
-
 .note-body {
   min-width: 0;
   color: rgba(255, 255, 255, 0.92);
@@ -328,6 +314,107 @@ a:hover {
   padding: 1px 6px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------------- media grid（朋友圈式） ---------------- */
+
+.media {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  max-width: 100%;
+}
+
+.media-cell {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--night-steel);
+  aspect-ratio: 1;
+}
+
+.media-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.media-cell a {
+  display: block;
+  height: 100%;
+}
+
+.media-more {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 7, 18, 0.58);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* 单图：限宽限高，不铺满整屏，避免一张图把时间线撑开 */
+.media[data-layout="single"] {
+  display: block;
+}
+
+.media[data-layout="single"] .media-cell {
+  width: max-content;
+  max-width: 100%;
+  aspect-ratio: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--glass-border);
+}
+
+.media[data-layout="single"] img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 260px);
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.media[data-layout="duo"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 280px;
+}
+
+.media[data-layout="duo"] .media-cell {
+  aspect-ratio: 1;
+}
+
+.media[data-layout="quad"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 280px;
+}
+
+.media[data-layout="grid"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 320px;
+}
+
+/* 详情页里的图片可以大一些 */
+.prose .media[data-layout="single"] img {
+  max-width: min(100%, 420px);
+  max-height: 380px;
+}
+
+.prose .media[data-layout="duo"],
+.prose .media[data-layout="quad"],
+.prose .media[data-layout="grid"] {
+  max-width: 420px;
 }
 
 .note-images {
@@ -541,6 +628,11 @@ a:hover {
 
 .site-foot a {
   color: var(--moonlight);
+}
+
+.site-foot-links {
+  display: inline-flex;
+  gap: var(--sp-16);
 }
 
 .site-foot a:hover {

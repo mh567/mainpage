@@ -1,6 +1,7 @@
 ---
 import { render } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
+import MediaGrid from './MediaGrid.astro';
 
 interface Props {
   note: CollectionEntry<'notes'>;
@@ -20,7 +21,6 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
 <article class="note">
   <div class="note-meta">
     <time datetime={data.date.toISOString()}>{dateFmt.format(data.date)}</time>
-    <span class="kind" data-kind={data.kind}>{data.kind}</span>
     <a class="note-permalink" href={`/notes/${id}/`} aria-label="永久链接">
       #
     </a>
@@ -29,15 +29,7 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
   <div class="note-body">
     <Content />
 
-    {
-      data.images.length > 0 && (
-        <div class="note-images">
-          {data.images.map((src) => (
-            <img src={src} alt="" loading="lazy" />
-          ))}
-        </div>
-      )
-    }
+    <MediaGrid images={data.images} />
 
     {
       data.link && (
