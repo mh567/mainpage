@@ -621,6 +621,13 @@ body.admin [hidden] {
   margin: 0 0 12px;
 }
 
+.list-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--champagne);
+  letter-spacing: 0.02em;
+}
+
 .list {
   display: flex;
   flex-direction: column;

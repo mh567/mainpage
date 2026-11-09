@@ -115,6 +115,10 @@ const tabs = [
       </section>
 
       <section class="pane" id="pane-notes" role="tabpanel" hidden>
+        <div class="list-head">
+          <span class="label">短帖</span>
+          <span class="list-count" id="notes-list-count" hidden></span>
+        </div>
         <div class="list" id="notes-list"></div>
       </section>
 
@@ -206,6 +210,7 @@ const tabs = [
 
         <div class="list-head">
           <span class="label">项目</span>
+          <span class="list-count" id="projects-count" hidden></span>
           <span class="spacer"></span>
           <span class="hint">拖动卡片调整顺序</span>
           <button type="button" class="cta small" id="btn-new-project">新建项目</button>

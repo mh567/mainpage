@@ -33,6 +33,16 @@ const NOTES_DIR = 'src/content/notes';
 const PROJECTS_DIR = 'src/content/projects';
 const UPLOADS_DIR = 'public/uploads';
 
+const PENDING_DEPLOY_KEY = 'emolu.admin.pending-deploy';
+
+interface PendingDeploy {
+  sha: string;
+  doneMessage: string;
+  href: string;
+  label: string;
+  startedAt: number;
+}
+
 const STATUS_LABELS: Record<ProjectStatus, string> = {
   active: '进行中',
   maintained: '维护中',
@@ -63,6 +73,7 @@ let token = storedToken ?? sessionStorage.getItem(SESSION_TOKEN_KEY) ?? '';
 let connected = false;
 let toastTimer = 0;
 let deployTimer = 0;
+let deployStatusTimer = 0;
 
 const state: {
   notes: Array<RemoteFile & { doc: NoteDoc }>;
@@ -80,15 +91,48 @@ const state: {
   busy: false,
 };
 
-function announce(message: string, tone: 'idle' | 'ok' | 'warn' = 'idle'): void {
-  statusLine.textContent = message;
-  statusLine.dataset.tone = tone;
-  delete statusLine.dataset.pending;
+type Tone = 'idle' | 'ok' | 'warn';
+
+/**
+ * 状态栏只有一条，但有两类信息：连接状态和部署进度。
+ * 分开存，渲染时部署优先，免得被“已加载 N 条”这种临时提示盖掉。
+ */
+let connectionStatus: { message: string; tone: Tone } = {
+  message: '未连接',
+  tone: 'idle',
+};
+let deployStatus: { message: string; tone: Tone; pending: boolean } | null = null;
+
+function paintStatus(): void {
+  const active = deployStatus ?? connectionStatus;
+  statusLine.textContent = active.message;
+  statusLine.dataset.tone = active.tone;
+  if (deployStatus?.pending) statusLine.dataset.pending = 'true';
+  else delete statusLine.dataset.pending;
+}
+
+function announce(message: string, tone: Tone = 'idle'): void {
+  connectionStatus = { message, tone };
+  paintStatus();
 }
 
 function announceDeploying(): void {
-  announce('等待部署…', 'idle');
-  statusLine.dataset.pending = 'true';
+  window.clearTimeout(deployStatusTimer);
+  setDeployStatus('等待部署…', 'idle', true);
+}
+
+function setDeployStatus(message: string, tone: Tone, pending: boolean): void {
+  deployStatus = { message, tone, pending };
+  paintStatus();
+
+  // 结束后停留一会儿，再把位置还回连接状态，免得一直挂在“已上线”
+  window.clearTimeout(deployStatusTimer);
+  if (!pending) {
+    deployStatusTimer = window.setTimeout(() => {
+      deployStatus = null;
+      paintStatus();
+    }, 8000);
+  }
 }
 
 interface ToastLink {
@@ -189,11 +233,41 @@ function stopDeployWatch(): void {
   deployTimer = 0;
 }
 
+function rememberPendingDeploy(job: PendingDeploy): void {
+  try {
+    localStorage.setItem(PENDING_DEPLOY_KEY, JSON.stringify(job));
+  } catch {
+    // 隐私模式下写不进去，只影响刷新后能不能接着显示
+  }
+}
+
+function forgetPendingDeploy(): void {
+  localStorage.removeItem(PENDING_DEPLOY_KEY);
+}
+
+function readPendingDeploy(): PendingDeploy | null {
+  const raw = localStorage.getItem(PENDING_DEPLOY_KEY);
+  if (!raw) return null;
+  try {
+    const job = JSON.parse(raw) as PendingDeploy;
+    if (!job?.sha || typeof job.startedAt !== 'number') return null;
+    // 太旧的当作已经结束，别一直挂着
+    if (Date.now() - job.startedAt > DEPLOY_MAX_MS) {
+      forgetPendingDeploy();
+      return null;
+    }
+    return job;
+  } catch {
+    forgetPendingDeploy();
+    return null;
+  }
+}
+
 /**
  * 提交后盯着 main 上最新一次部署，直到这次提交真的上线。
  * 连续提交时 GitHub 会取消前一次的部署，那不算失败，继续等新的那次。
  * 运行记录是公开接口，token 的细粒度权限影响不到它。
- * 调用方要先刷新完列表再调它，否则状态栏会被列表的提示盖掉。
+ * 任务记在 localStorage 里，刷新页面能接着等。
  */
 function watchDeploy(
   commit: CommitRef,
@@ -206,14 +280,25 @@ function watchDeploy(
     return;
   }
 
-  const startedAt = Date.now();
+  const job: PendingDeploy = {
+    sha: commit.sha,
+    doneMessage,
+    href: target.href,
+    label: target.label,
+    startedAt: Date.now(),
+  };
+  rememberPendingDeploy(job);
+  runDeployWatch(job);
+}
+
+function runDeployWatch(job: PendingDeploy): void {
   announceDeploying();
 
   const poll = async (): Promise<void> => {
-    if (Date.now() - startedAt > DEPLOY_MAX_MS) {
+    if (Date.now() - job.startedAt > DEPLOY_MAX_MS) {
       // 提交已经进仓库了，只是构建慢，别吓唬人
-      announce('提交已完成，部署还在跑', 'idle');
-      notify(`${doneMessage}，部署还在跑`, 'ok', target);
+      setDeployStatus('提交已完成，部署还在跑', 'idle', false);
+      forgetPendingDeploy();
       return;
     }
 
@@ -230,11 +315,13 @@ function watchDeploy(
       return;
     }
 
+    forgetPendingDeploy();
+
     if (run.conclusion === 'success') {
-      announce('已上线', 'ok');
-      notify(doneMessage, 'ok', target);
+      setDeployStatus('已上线', 'ok', false);
+      notify(job.doneMessage, 'ok', { href: job.href, label: job.label });
     } else {
-      announce('部署失败', 'warn');
+      setDeployStatus('部署失败', 'warn', false);
       notify('部署失败，看 Actions 日志', 'warn', {
         href: run.htmlUrl || 'https://github.com/mh567/mainpage/actions',
         label: '看 Actions',
@@ -243,6 +330,13 @@ function watchDeploy(
   };
 
   deployTimer = window.setTimeout(() => void poll(), DEPLOY_POLL_MS);
+}
+
+/** 刷新后如果还有没走完的部署，接着盯。 */
+function resumeDeployWatch(): void {
+  const job = readPendingDeploy();
+  if (!job) return;
+  runDeployWatch(job);
 }
 
 /* ---------------- helpers ---------------- */
@@ -751,11 +845,11 @@ cancelEditButton.addEventListener('click', () => {
 
 const notesList = el<HTMLDivElement>('notes-list');
 const notesCount = el<HTMLSpanElement>('notes-count');
+const notesListCount = el<HTMLSpanElement>('notes-list-count');
 
 async function loadNotes(): Promise<void> {
   if (!connected) return;
   setBusy(true);
-  announce('加载短帖…');
   try {
     const files = await listMarkdown(token, NOTES_DIR);
     const loaded = await mapLimit(files, 6, async (file) => {
@@ -765,10 +859,8 @@ async function loadNotes(): Promise<void> {
     loaded.sort((a, b) => (a.doc.meta.date < b.doc.meta.date ? 1 : -1));
     state.notes = loaded;
     renderNotes();
-    announce(`已加载 ${loaded.length} 条短帖`, 'ok');
   } catch (error) {
     notify(friendly(error), 'warn');
-    announce('加载失败', 'warn');
   } finally {
     setBusy(false);
   }
@@ -778,6 +870,8 @@ function renderNotes(): void {
   notesList.replaceChildren();
   notesCount.textContent = String(state.notes.length);
   notesCount.hidden = state.notes.length === 0;
+  notesListCount.textContent = `${state.notes.length} 条`;
+  notesListCount.hidden = state.notes.length === 0;
 
   if (state.notes.length === 0) {
     notesList.append(emptyState('还没有短帖，去「发帖」写一条。'));
@@ -916,6 +1010,7 @@ async function deleteNote(item: RemoteFile & { doc: NoteDoc }): Promise<void> {
 /* ---------------- projects ---------------- */
 
 const projectsList = el<HTMLDivElement>('projects-list');
+const projectsCount = el<HTMLSpanElement>('projects-count');
 const projectForm = el<HTMLFormElement>('project-form');
 const projectFormTitle = el<HTMLElement>('project-form-title');
 const projectTitle = el<HTMLInputElement>('project-title');
@@ -934,7 +1029,6 @@ const projectBody = el<HTMLTextAreaElement>('project-body');
 async function loadProjects(): Promise<void> {
   if (!connected) return;
   setBusy(true);
-  announce('加载项目…');
   try {
     const files = await listMarkdown(token, PROJECTS_DIR);
     const loaded = await mapLimit(files, 6, async (file) => {
@@ -948,10 +1042,8 @@ async function loadProjects(): Promise<void> {
     );
     state.projects = loaded;
     renderProjects();
-    announce(`已加载 ${loaded.length} 个项目`, 'ok');
   } catch (error) {
     notify(friendly(error), 'warn');
-    announce('加载失败', 'warn');
   } finally {
     setBusy(false);
   }
@@ -959,6 +1051,8 @@ async function loadProjects(): Promise<void> {
 
 function renderProjects(): void {
   projectsList.replaceChildren();
+  projectsCount.textContent = `${state.projects.length} 个`;
+  projectsCount.hidden = state.projects.length === 0;
 
   if (state.projects.length === 0) {
     projectsList.append(emptyState('还没有项目，点「新建项目」。'));
@@ -1335,6 +1429,8 @@ function boot(): void {
       openSettings(settingsHint.textContent || '');
       return;
     }
+    // 刷新前没走完的部署接着盯，状态栏能自己恢复
+    resumeDeployWatch();
     await Promise.all([loadNotes(), loadProjects()]);
   })();
 }
@@ -1342,6 +1438,7 @@ function boot(): void {
 window.addEventListener('pagehide', () => {
   stopDeployWatch();
   window.clearTimeout(toastTimer);
+  window.clearTimeout(deployStatusTimer);
 });
 
 boot();
