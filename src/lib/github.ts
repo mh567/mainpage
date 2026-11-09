@@ -279,15 +279,21 @@ export interface DeployRun {
   htmlUrl: string;
 }
 
+export type DeployCheck =
+  | { kind: 'run'; run: DeployRun }
+  | { kind: 'unavailable' };
+
 /**
  * 部署由 Actions 完成，Pages 自己的 builds 接口对这类仓库是 404，
  * 所以看 main 上最新一次 workflow run 才是可靠信号。
  *
  * 注意不要按 commit sha 去精确匹配：连续几次提交时 GitHub 会取消前一次的
  * 部署（同一时间只允许一个 Pages 部署），被取消的那次并不代表站点没更新。
- * 公开仓库的运行记录不需要鉴权，这里刻意不带 token，免得被细粒度权限挡住。
+ *
+ * 必须带 token 请求：未认证的接口每小时只有 60 次，4 秒轮询几分钟就打满了，
+ * 之后一直拿不到结果，界面就会永远停在“等待部署”。
  */
-export async function latestDeployRun(): Promise<DeployRun | null> {
+export async function latestDeployRun(token: string): Promise<DeployCheck> {
   try {
     const response = await fetch(
       `${API}/repos/${OWNER}/${REPO}/actions/runs?branch=${BRANCH}&per_page=1`,
@@ -295,12 +301,14 @@ export async function latestDeployRun(): Promise<DeployRun | null> {
         headers: {
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         cache: 'no-store',
       },
     );
 
-    if (!response.ok) return null;
+    // 403 通常是限流或者 token 没有 Actions 读权限，都当作“拿不到状态”
+    if (!response.ok) return { kind: 'unavailable' };
 
     const data = (await response.json()) as {
       workflow_runs?: Array<{
@@ -312,16 +320,19 @@ export async function latestDeployRun(): Promise<DeployRun | null> {
     };
 
     const run = data.workflow_runs?.[0];
-    if (!run) return null;
+    if (!run) return { kind: 'unavailable' };
 
     return {
-      headSha: run.head_sha ?? '',
-      status: run.status ?? '',
-      conclusion: (run.conclusion as DeployRun['conclusion']) ?? null,
-      htmlUrl: run.html_url ?? '',
+      kind: 'run',
+      run: {
+        headSha: run.head_sha ?? '',
+        status: run.status ?? '',
+        conclusion: (run.conclusion as DeployRun['conclusion']) ?? null,
+        htmlUrl: run.html_url ?? '',
+      },
     };
   } catch {
-    return null;
+    return { kind: 'unavailable' };
   }
 }
 

@@ -26,7 +26,7 @@ body.admin [hidden] {
 .admin-bar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -34,13 +34,9 @@ body.admin [hidden] {
   width: min(100% - 32px, 880px);
   margin: 0 auto;
   padding: 14px 0 12px;
-  background: linear-gradient(
-    to bottom,
-    rgba(6, 10, 19, 0.94) 62%,
-    rgba(6, 10, 19, 0)
-  );
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  /* 必须不透明：下面滚动的内容不能透上来，否则文字会叠在一起 */
+  background: var(--night-deep);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .admin-brand {
@@ -572,6 +568,7 @@ body.admin [hidden] {
 
 .card.is-sortable {
   cursor: grab;
+  position: relative;
 }
 
 .card.is-sortable:active {
@@ -580,12 +577,16 @@ body.admin [hidden] {
 
 .card.is-dragging {
   opacity: 0.4;
+  /* 被拖的那张沉下去，避免和相邻卡片的阴影打架 */
+  box-shadow: none;
 }
 
+/* 落点卡片抬到最上层，高亮框才能压在其它卡片之上而不是被盖住 */
 .card.is-over {
-  border-color: rgba(228, 184, 99, 0.6);
-  box-shadow: 0 0 0 1px rgba(228, 184, 99, 0.4),
-    0 8px 24px rgba(3, 7, 18, 0.35);
+  z-index: 2;
+  border-color: rgba(228, 184, 99, 0.75);
+  box-shadow: 0 0 0 1px rgba(228, 184, 99, 0.55),
+    0 12px 32px rgba(3, 7, 18, 0.6);
 }
 
 .drag-grip {
@@ -619,6 +620,8 @@ body.admin [hidden] {
   justify-content: space-between;
   gap: var(--sp-12);
   margin: 0 0 12px;
+  /* 顶部栏和待提交栏都是 sticky，锚点跳转时要留出这段高度 */
+  scroll-margin-top: 120px;
 }
 
 .list-count {
@@ -631,8 +634,9 @@ body.admin [hidden] {
 /* 待提交栏：改动攒在本地，点这里才真正写回仓库 */
 .pending-bar {
   position: sticky;
-  top: 52px;
-  z-index: 12;
+  /* 紧贴顶部栏下沿，中间不留缝，否则卡片会从缝里透出来 */
+  top: var(--admin-bar-h, 57px);
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -640,10 +644,10 @@ body.admin [hidden] {
   margin-bottom: 10px;
   padding: 10px 14px;
   border-radius: var(--r-input);
-  border: 1px solid rgba(228, 184, 99, 0.4);
-  background: rgba(228, 184, 99, 0.12);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(228, 184, 99, 0.45);
+  /* 不透明底：卡片从下面滚过时不能透出文字 */
+  background: #1a2233;
+  box-shadow: 0 10px 30px rgba(3, 7, 18, 0.55);
 }
 
 .pending-text {
@@ -655,6 +659,11 @@ body.admin [hidden] {
 
 .pending-bar .ghost {
   background: rgba(6, 10, 19, 0.5);
+}
+
+/* 有待提交栏时，列表顶部多留一点空间，避免第一张卡片被栏压住 */
+.pending-bar:not([hidden]) + .list-head {
+  margin-top: 2px;
 }
 
 .list {

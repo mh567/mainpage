@@ -268,7 +268,7 @@ function readPendingDeploy(): PendingDeploy | null {
 /**
  * 提交后盯着 main 上最新一次部署，直到这次提交真的上线。
  * 连续提交时 GitHub 会取消前一次的部署，那不算失败，继续等新的那次。
- * 运行记录是公开接口，token 的细粒度权限影响不到它。
+ * 部署用带 token 的接口查询，未认证的每小时只有 60 次，很快就会打满。
  * 任务记在 localStorage 里，刷新页面能接着等。
  */
 function watchDeploy(
@@ -277,6 +277,10 @@ function watchDeploy(
   target: ToastLink,
 ): void {
   stopDeployWatch();
+
+  // 提交成功后连接状态要恢复，否则部署收尾回落到的是“正在删除…”这种过程提示
+  connectionStatus = { message: '已连接', tone: 'ok' };
+
   if (!commit.sha) {
     announce(`${doneMessage}，约 1 分钟生效`, 'ok');
     return;
@@ -296,17 +300,34 @@ function watchDeploy(
 function runDeployWatch(job: PendingDeploy): void {
   announceDeploying();
 
+  let misses = 0;
+
   const poll = async (): Promise<void> => {
     if (Date.now() - job.startedAt > DEPLOY_MAX_MS) {
-      // 提交已经进仓库了，只是构建慢，别吓唬人
-      setDeployStatus('提交已完成，部署还在跑', 'idle', false);
+      // 提交已经进仓库了，只是构建慢或者状态拿不到，别吓唬人
+      setDeployStatus('提交已完成，部署状态未确认', 'idle', false);
       forgetPendingDeploy();
       return;
     }
 
-    const run = await latestDeployRun();
+    const check = await latestDeployRun(token);
 
-    if (run?.status !== 'completed') {
+    if (check.kind === 'unavailable') {
+      misses += 1;
+      // 连续几次都拿不到（多半是限流），不要继续空转，直接收尾
+      if (misses >= 5) {
+        setDeployStatus('提交已完成，部署状态未确认', 'idle', false);
+        forgetPendingDeploy();
+        return;
+      }
+      deployTimer = window.setTimeout(() => void poll(), DEPLOY_POLL_MS);
+      return;
+    }
+
+    misses = 0;
+    const run = check.run;
+
+    if (run.status !== 'completed') {
       deployTimer = window.setTimeout(() => void poll(), DEPLOY_POLL_MS);
       return;
     }
@@ -1538,6 +1559,22 @@ window.addEventListener('beforeunload', (event) => {
   event.preventDefault();
   event.returnValue = '';
 });
+
+/**
+ * 顶部栏是 sticky，高度会随字号和换行变化。
+ * 待提交栏要贴着它下沿，否则中间会露一条缝，滚动的卡片从缝里透出来。
+ */
+function syncAdminBarHeight(): void {
+  const bar = document.querySelector<HTMLElement>('.admin-bar');
+  if (!bar) return;
+  document.documentElement.style.setProperty(
+    '--admin-bar-h',
+    `${Math.round(bar.getBoundingClientRect().height)}px`,
+  );
+}
+
+syncAdminBarHeight();
+window.addEventListener('resize', syncAdminBarHeight);
 
 window.addEventListener('pagehide', () => {
   stopDeployWatch();
