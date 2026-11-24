@@ -1,11 +1,11 @@
 ---
-title: habu
-summary: 可自部署的个人数字工作台，集中管理导航、书签、备忘待办和订阅。
+title: Habu
+summary: "可自部署的个人数字工作台，集中管理导航、书签、备忘待办和订阅。"
 url: https://habu.emolu.cn/demo/
 repo: https://github.com/mh567/habu
 tags: [工作台]
 status: active
-order: 2
+order: 5
 started: 2026-11-08
 site:
   slug: habu

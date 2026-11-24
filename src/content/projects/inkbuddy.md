@@ -1,10 +1,10 @@
 ---
 title: InkBuddy
-summary: 在阅读器自带的浏览器打开局域网地址，即可查看同步歌词和粤拼。
+summary: "在阅读器自带的浏览器打开局域网地址，即可查看同步歌词和粤拼。"
 repo: https://github.com/mh567/inkbuddy
 tags: [macOS, 墨水屏]
 status: active
-order: 5
+order: 3
 site:
   slug: inkbuddy
   headline: 让闲置墨水屏显示 Mac 上的歌词
