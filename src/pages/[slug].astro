@@ -1,0 +1,134 @@
+---
+import { readdirSync, statSync } from 'node:fs';
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import type { GetStaticPaths } from 'astro';
+import Base from '../layouts/Base.astro';
+import ProjectFigure from '../components/ProjectFigure.astro';
+import '../styles/project-site.css';
+
+type Project = CollectionEntry<'projects'>;
+type Site = NonNullable<Project['data']['site']>;
+interface Props {
+  project: Project;
+  site: Site;
+}
+
+export const getStaticPaths = (async () => {
+  const reserved = new Set([
+    '_astro',
+    ...readdirSync('public').map((name) => name.split('.')[0]),
+    ...readdirSync('src/pages').filter((name) => !name.startsWith('[')).map((name) => name.split('.')[0]),
+  ]);
+  const seen = new Map<string, string>();
+  return (await getCollection('projects')).flatMap((project) => {
+    const { site } = project.data;
+    if (!site) return [];
+
+    const { slug } = site;
+    if (reserved.has(slug)) throw new Error(`作品路由 /${slug}/ 与站点保留路径冲突（${project.id}）`);
+    const previous = seen.get(slug);
+    if (previous) throw new Error(`作品路由 /${slug}/ 重复（${previous}、${project.id}）`);
+    seen.set(slug, project.id);
+
+    const images = [site.icon, site.image?.src, site.shareImage, ...site.sections.map(({ image }) => image?.src)];
+    for (const image of images) {
+      if (image && !statSync(`public${decodeURIComponent(image)}`, { throwIfNoEntry: false })?.isFile()) {
+        throw new Error(`作品图片 ${image} 不存在（${project.id}）`);
+      }
+    }
+    return [{ params: { slug }, props: { project, site } }];
+  });
+}) satisfies GetStaticPaths;
+
+const { project, site } = Astro.props;
+const { title, summary, repo } = project.data;
+const { Content } = await render(project);
+const hasBody = Boolean(project.body?.trim());
+const shareImage = site.shareImage ?? site.image?.src;
+---
+
+<Base
+  title={`${title} · emolu.cn`}
+  description={summary}
+  appearance="project"
+  icon={site.icon}
+  shareImage={shareImage}
+  shareAlt={shareImage === site.image?.src ? site.image?.alt : undefined}
+>
+  <div class="project-site" style={{ '--project-accent': site.accent }}>
+    <a class="skip-project" href="#main-content">跳到主要内容</a>
+    <header class="project-header wrap">
+      <a class="project-brand" href={`/${site.slug}/`}>
+        {site.icon && <img src={site.icon} alt="" width="32" height="32" />}
+        <span>{title}</span>
+      </a>
+      <nav class="project-nav" aria-label="作品导航">
+        {hasBody && <a href="#features">功能</a>}
+        {site.sections.map((section) => <a href={`#${section.id}`}>{section.title}</a>)}
+        <a class="back-home" href="/">个人主页</a>
+      </nav>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section class="hero-band" aria-labelledby="hero:title">
+        <div class:list={['hero wrap', { 'has-image': site.image }]}>
+          <div class="hero-copy">
+            <h1 id="hero:title">{title}</h1>
+            <p class="hero-headline">{site.headline}</p>
+            <p class="hero-summary">{summary}</p>
+            {site.platform && <p class="hero-platform">{site.platform}</p>}
+            <div class="project-actions">
+              {site.actions.map(({ href, label }, index) => (
+                <a class:list={['action-link', { primary: index === 0 }]} href={href}>
+                  {label}
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    {href.startsWith('#')
+                      ? <path d="M8 2.5v10m-4-4 4 4 4-4" />
+                      : <path d="M3 8h9.5m-4-4 4 4-4 4" />}
+                  </svg>
+                </a>
+              ))}
+            </div>
+          </div>
+          {site.image && <ProjectFigure image={site.image} hero />}
+        </div>
+      </section>
+
+      {hasBody && (
+        <section class="project-section features wrap" id="features" aria-labelledby="features:label">
+          <h2 id="features:label">功能与用法</h2>
+          <div class="project-prose"><Content /></div>
+        </section>
+      )}
+
+      {site.sections.map((section) => (
+        <section class:list={['project-section', 'wrap', { 'has-image': section.image }]} id={section.id} aria-labelledby={`${section.id}:label`}>
+          <div class="section-copy">
+            <h2 id={`${section.id}:label`}>{section.title}</h2>
+            <p>{section.description}</p>
+            {section.requirements.length > 0 && (
+              <ul class="requirements">{section.requirements.map((item) => <li>{item}</li>)}</ul>
+            )}
+            {section.links.length > 0 && (
+              <ul class="resource-links">
+                {section.links.map(({ href, label }) => <li><a href={href}>{label}</a></li>)}
+              </ul>
+            )}
+          </div>
+          {section.image && <ProjectFigure image={section.image} />}
+        </section>
+      ))}
+    </main>
+
+    <footer class="project-footer">
+      <div class="wrap footer-row">
+        <span>{title}</span>
+        <nav class="project-nav" aria-label="项目链接">
+          {repo && <a href={repo}>GitHub</a>}
+          {site.links.map(({ href, label }) => <a href={href}>{label}</a>)}
+          <a href="/">返回个人主页</a>
+        </nav>
+      </div>
+    </footer>
+  </div>
+</Base>

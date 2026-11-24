@@ -4,12 +4,18 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  appearance?: 'project';
+  shareImage?: string;
+  shareAlt?: string;
+  icon?: string;
 }
 
-const { title, description } = Astro.props;
+const { title, description, appearance, shareImage, shareAlt, icon } = Astro.props;
+const projectPage = appearance === 'project';
 const site = Astro.site;
 const canonical = new URL(Astro.url.pathname, site ?? Astro.url);
 const year = new Date().getFullYear();
+const image = shareImage && new URL(shareImage, canonical);
 ---
 
 <!doctype html>
@@ -17,13 +23,23 @@ const year = new Date().getFullYear();
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b1322" />
+    <meta name="color-scheme" content={projectPage ? 'light' : 'dark'} />
+    <meta name="theme-color" content={projectPage ? '#f8f7f3' : '#0b1322'} />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
     <link rel="canonical" href={canonical} />
-    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
-    <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png" />
+    {projectPage && <meta property="og:type" content="website" />}
+    {projectPage && <meta property="og:title" content={title} />}
+    {projectPage && <meta property="og:url" content={canonical} />}
+    {projectPage && description && <meta property="og:description" content={description} />}
+    {image && <meta property="og:image" content={image} />}
+    {image && shareAlt && <meta property="og:image:alt" content={shareAlt} />}
+    {icon ? <link rel="icon" href={icon} /> : (
+      <>
+        <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/favicon-64.png" sizes="64x64" type="image/png" />
+      </>
+    )}
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link
       rel="alternate"
@@ -34,15 +50,17 @@ const year = new Date().getFullYear();
     <link rel="me" href="https://github.com/mh567" />
     <meta name="generator" content={Astro.generator} />
   </head>
-  <body>
+  <body class={projectPage ? 'project-page' : undefined}>
     <slot />
 
-    <footer class="site-foot">
-      <span>© {year} harris</span>
-      <span class="site-foot-links">
-        <a href="/rss.xml">RSS</a>
-        <a href="/admin/">管理</a>
-      </span>
-    </footer>
+    {!projectPage && (
+      <footer class="site-foot">
+        <span>© {year} harris</span>
+        <span class="site-foot-links">
+          <a href="/rss.xml">RSS</a>
+          <a href="/admin/">管理</a>
+        </span>
+      </footer>
+    )}
   </body>
 </html>

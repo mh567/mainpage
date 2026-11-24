@@ -37,6 +37,7 @@ export interface ProjectMeta {
 export interface ProjectDoc {
   meta: ProjectMeta;
   body: string;
+  siteFrontmatter?: string;
 }
 
 export function todayIso(): string {
@@ -70,7 +71,7 @@ function splitInlineList(value: string): string[] {
     .filter((item) => item.length > 0);
 }
 
-function readFrontmatter(source: string): { raw: Raw; body: string } {
+function readFrontmatter(source: string): { raw: Raw; body: string; frontmatter?: string } {
   const match = FRONTMATTER.exec(source);
   if (!match) return { raw: {}, body: source.trim() };
 
@@ -103,7 +104,7 @@ function readFrontmatter(source: string): { raw: Raw; body: string } {
     }
   }
 
-  return { raw, body: source.slice(match[0].length).trim() };
+  return { raw, body: source.slice(match[0].length).trim(), frontmatter: match[1] };
 }
 
 function text(raw: Raw, key: string): string {
@@ -181,8 +182,10 @@ export function serializeNote(doc: NoteDoc): string {
 }
 
 export function parseProject(source: string): ProjectDoc {
-  const { raw, body } = readFrontmatter(source);
+  const { raw, body, frontmatter } = readFrontmatter(source);
   const status = text(raw, 'status') as ProjectStatus;
+  // Keep the nested YAML when the project editor rewrites its flat fields.
+  const siteFrontmatter = frontmatter?.match(/^site[ \t]*:[^\r\n]*(?:\r?\n(?![A-Za-z_][\w-]*[ \t]*:)[^\r\n]*)*/m)?.[0].trimEnd();
 
   return {
     meta: {
@@ -198,6 +201,7 @@ export function parseProject(source: string): ProjectDoc {
       cover: text(raw, 'cover'),
     },
     body,
+    siteFrontmatter,
   };
 }
 
@@ -216,6 +220,7 @@ export function serializeProject(doc: ProjectDoc): string {
   if (meta.order !== 0) lines.push(`order: ${meta.order}`);
   if (meta.started) lines.push(`started: ${meta.started}`);
   if (meta.cover.trim()) lines.push(`cover: ${yamlScalar(meta.cover.trim())}`);
+  if (doc.siteFrontmatter) lines.push(doc.siteFrontmatter);
 
   lines.push('---', '');
   if (doc.body.trim()) lines.push(doc.body.trim());

@@ -1,0 +1,23 @@
+---
+interface Props {
+  image: { src: string; alt: string; width: number; height: number; caption?: string };
+  hero?: boolean;
+}
+
+const { image, hero = false } = Astro.props;
+---
+
+<figure class:list={['product-figure', { 'portrait-figure': image.height > image.width }]}>
+  <div class="figure-mat">
+    <img
+      src={image.src}
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading={hero ? 'eager' : 'lazy'}
+      fetchpriority={hero ? 'high' : undefined}
+      decoding="async"
+    />
+  </div>
+  {image.caption && <figcaption>{image.caption}</figcaption>}
+</figure>

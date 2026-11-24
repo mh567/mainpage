@@ -1103,8 +1103,8 @@ async function loadProjects(): Promise<void> {
 /** 每个项目文件在“当前顺序”下应该长什么样。 */
 function projectText(item: { doc: ProjectDoc }, index: number): string {
   return serializeProject({
+    ...item.doc,
     meta: { ...item.doc.meta, order: index },
-    body: item.doc.body,
   });
 }
 
@@ -1371,7 +1371,7 @@ function stageProject(): void {
     const current = state.projects[index];
     state.projects[index] = {
       ...current,
-      doc: { meta: { ...meta, order: current.doc.meta.order }, body },
+      doc: { ...current.doc, meta: { ...meta, order: current.doc.meta.order }, body },
     };
     notify('已加入待提交');
   } else {

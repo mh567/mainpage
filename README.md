@@ -111,6 +111,24 @@ draft: false
 
 项目同理，见 `src/content/projects/` 下的示例。`order` 决定卡片顺序，后台在项目列表里拖拽即可，会自动重排这个字段。
 
+### 新增作品官网
+
+在项目 Markdown 的 frontmatter 中添加 `site`，首页卡片会进入 `/<slug>/`。例如：
+
+```yaml
+site:
+  slug: my-tool
+  headline: 在浏览器里使用我的工具
+  accent: "#317d70"
+  actions:
+    - label: 在线体验
+      href: https://example.com/demo/
+```
+
+`slug` 使用小写字母、数字和连字符，发布后保留该值。正文用 `###` 编写功能与用法。截图放到 `public/uploads/` 或 `public/project-media/`，在 `site.image` 填写 `src`、`alt`、`width` 和 `height`。`site.sections` 可配置安装或平台区块，首屏操作可通过 `#章节ID` 跳转。
+
+官网配置在 Markdown 中维护。后台编辑项目资料或调整顺序时会保留这段配置。完整示例见 [habu](src/content/projects/habu.md)、[AriaPilot](src/content/projects/aria-pilot.md) 和 [InkBuddy](src/content/projects/inkbuddy.md)。运行 `npm run build && node --test tests/project-sites.test.mjs` 验证页面。
+
 ## 图片排版
 
 `MediaGrid` 按图片数量选布局，规则和发朋友圈一致：

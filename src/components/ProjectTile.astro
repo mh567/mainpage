@@ -7,13 +7,14 @@ interface Props {
 
 const { project } = Astro.props;
 const { data } = project;
-const primary = data.url ?? data.repo;
+const local = data.site && `/${data.site.slug}/`;
+const primary = local ?? data.url ?? data.repo;
 const footText = data.tags.slice(0, 2).join(" / ");
 ---
 
 {
   primary ? (
-    <a class="tile" href={primary} target="_blank" rel="noopener noreferrer">
+    <a class="tile" href={primary} target={local ? undefined : '_blank'} rel={local ? undefined : 'noopener noreferrer'}>
       <div class="tile-top">
         <span class="tile-title">{data.title}</span>
         <span class="tile-status" data-status={data.status}>
@@ -23,7 +24,7 @@ const footText = data.tags.slice(0, 2).join(" / ");
       <p class="tile-summary">{data.summary}</p>
       <div class="tile-foot">
         <span>{footText}</span>
-        <span class="arrow" aria-hidden="true">↗</span>
+        <span class="arrow" aria-hidden="true">{local ? '→' : '↗'}</span>
       </div>
     </a>
   ) : (
