@@ -92,6 +92,11 @@ async function renderMedia({ source, format, bytes }: MediaFile): Promise<Respon
     const options = { timeout: 120_000 };
     if (format === 'jpeg') {
       await run('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '85', input, '--out', output], options);
+      // sips can exit successfully after writing only JPEG metadata.
+      const { stdout } = await run('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', output], options);
+      if (!/pixelWidth: [1-9]\d*\s*$/m.test(stdout) || !/pixelHeight: [1-9]\d*\s*$/m.test(stdout)) {
+        throw new Error('生成的 JPEG 缺少有效图像尺寸');
+      }
     } else {
       await run('avconvert', ['--source', input, '--preset', 'Preset1280x720', '--output', output], options);
     }

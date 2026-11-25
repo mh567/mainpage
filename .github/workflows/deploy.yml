@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     # Use the native HEIC and H.264 converters for note attachments.
-    runs-on: macos-15-intel
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
