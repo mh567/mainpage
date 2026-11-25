@@ -1,0 +1,61 @@
+<dialog class="media-preview" id="media-preview" aria-label="图片预览">
+  <div class="media-preview-panel">
+    <form method="dialog">
+      <button class="media-preview-close" type="submit" aria-label="关闭图片预览" autofocus>×</button>
+    </form>
+    <img class="media-preview-image" alt="" />
+    <video class="media-preview-video" controls playsinline preload="none" aria-label="Live Photo" hidden></video>
+    <p class="media-preview-status" role="status" hidden>动态视频暂时无法播放，已显示静态照片。</p>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('#media-preview');
+  const image = dialog?.querySelector<HTMLImageElement>('.media-preview-image');
+  const video = dialog?.querySelector<HTMLVideoElement>('video');
+  const status = dialog?.querySelector<HTMLElement>('.media-preview-status');
+
+  if (dialog && image && video && status) {
+    document.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (!(event.target instanceof Element)) return;
+      const link = event.target.closest<HTMLAnchorElement>('a[data-media-preview]');
+      if (!link || typeof dialog.showModal !== 'function') return;
+
+      event.preventDefault();
+      const thumbnail = link.querySelector('img');
+      image.src = link.href;
+      image.alt = thumbnail?.alt ?? '';
+      const motion = link.dataset.motion;
+      image.hidden = Boolean(motion);
+      video.hidden = !motion;
+      status.hidden = true;
+
+      dialog.showModal();
+      if (motion) {
+        video.poster = link.href;
+        video.src = motion;
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          void video.play().catch(() => { /* Native controls allow playback when autoplay is blocked. */ });
+        }
+      }
+    });
+
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+    dialog.addEventListener('close', () => {
+      video.pause();
+      video.removeAttribute('src');
+      video.removeAttribute('poster');
+      video.load();
+      image.removeAttribute('src');
+    });
+    video.addEventListener('error', () => {
+      if (!dialog.open || !video.hasAttribute('src')) return;
+      video.hidden = true;
+      image.hidden = false;
+      status.hidden = false;
+    });
+  }
+</script>

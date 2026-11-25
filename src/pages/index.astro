@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import MediaPreview from '../components/MediaPreview.astro';
 import ProjectTile from '../components/ProjectTile.astro';
 import Timeline from '../components/Timeline.astro';
 
@@ -60,4 +61,5 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
       }
     </section>
   </main>
+  <MediaPreview />
 </Base>

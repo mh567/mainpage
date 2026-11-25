@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Use the native HEIC and H.264 converters for note attachments.
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import MediaPreview from '../../components/MediaPreview.astro';
 import MediaGrid from '../../components/MediaGrid.astro';
 
 import NoteLink from '../../components/NoteLink.astro';
@@ -60,4 +61,5 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
       <p class="perma-hint">/notes/{id}/</p>
     </article>
   </main>
+  <MediaPreview />
 </Base>

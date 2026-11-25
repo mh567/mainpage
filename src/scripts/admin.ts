@@ -10,6 +10,8 @@ import {
   type ProjectMeta,
   type ProjectStatus,
 } from '../lib/content';
+import { splitEmbeddedMotion } from '../lib/motion-photo';
+import { groupNoteMedia, isHeicFile, noteMedia, NOTE_MEDIA_SOURCE } from '../lib/note-media';
 import {
   GitHubError,
   commitFiles,
@@ -391,12 +393,14 @@ function parseTags(raw: string): string[] {
 }
 
 function extensionOf(file: File): string {
+  if (isHeicFile(file)) return /heif/i.test(file.name + file.type) ? 'heif' : 'heic';
   const fromName = /\.([a-z0-9]+)$/i.exec(file.name)?.[1];
   if (fromName) return fromName.toLowerCase();
   if (file.type === 'image/jpeg') return 'jpg';
   if (file.type === 'image/png') return 'png';
   if (file.type === 'image/gif') return 'gif';
   if (file.type === 'image/webp') return 'webp';
+  if (file.type === 'image/avif') return 'avif';
   return 'png';
 }
 
@@ -426,7 +430,7 @@ function guardImage(image: HTMLImageElement): void {
 const previews = new Map<string, string>();
 
 function displaySrc(src: string): string {
-  return previews.get(src) ?? src;
+  return previews.get(src) ?? noteMedia(src).image;
 }
 
 /**
@@ -438,7 +442,7 @@ async function prepareImage(
   file: File,
 ): Promise<{ base64: string; extension: string }> {
   const extension = extensionOf(file);
-  if (file.size < COMPRESS_THRESHOLD) {
+  if (isHeicFile(file) || file.size < COMPRESS_THRESHOLD) {
     return { base64: await readAsBase64(file), extension };
   }
 
@@ -577,6 +581,12 @@ function renderImages(): void {
       figure.append(badge);
     }
 
+    if (noteMedia(src).motion) {
+      const live = document.createElement('span');
+      live.className = 'thumb-live';
+      live.textContent = 'Live';
+      figure.append(live);
+    }
     figure.append(image, remove);
 
     figure.addEventListener('dragstart', (event) => {
@@ -629,8 +639,10 @@ function renderImages(): void {
 }
 
 async function uploadFiles(files: File[]): Promise<void> {
-  const images = files.filter((file) => file.type.startsWith('image/'));
-  if (!images.length) return;
+  if (state.busy) return;
+  const { items, hasUnpairedMotion } = groupNoteMedia(files);
+  if (hasUnpairedMotion) notify('请同时选择实况照片的同名图片和 MOV 或 MP4 文件', 'warn');
+  if (!items.length) return;
   if (!connected) {
     notify('先连接 GitHub', 'warn');
     openSettings();
@@ -641,17 +653,31 @@ async function uploadFiles(files: File[]): Promise<void> {
   announce('上传图片…');
   try {
     let done = 0;
-    for (const file of images) {
-      const { base64, extension } = await prepareImage(file);
-      const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-      const path = `${UPLOADS_DIR}/${name}`;
-      await writeBase64(token, path, base64, `上传图片 ${name}`);
-      const publicPath = `/uploads/${name}`;
-      previews.set(publicPath, URL.createObjectURL(file));
+    for (const item of items) {
+      const embedded = await splitEmbeddedMotion(item.image);
+      const image = embedded?.image ?? item.image;
+      const motion = item.motion ?? embedded?.motion;
+      const { base64, extension } = await prepareImage(image);
+      const id = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+      const name = `${id}${motion ? '.live' : ''}.${extension}`;
+      const localOriginal = Boolean(motion) || isHeicFile(image);
+      if (motion) {
+        await commitFiles(token, [
+          { path: `${NOTE_MEDIA_SOURCE}/${name}`, base64 },
+          { path: `${NOTE_MEDIA_SOURCE}/${id}.live.mov`, base64: await readAsBase64(motion) },
+        ], `上传 Live Photo ${name}`);
+      } else {
+        const directory = localOriginal ? NOTE_MEDIA_SOURCE : UPLOADS_DIR;
+        await writeBase64(token, `${directory}/${name}`, base64, `上传图片 ${name}`);
+      }
+
+      const publicPath = `/${localOriginal ? 'media' : 'uploads'}/${name}`;
+      previews.set(publicPath, URL.createObjectURL(image));
       state.images.push(publicPath);
       renderImages();
+      saveDraft();
       done += 1;
-      announce(`上传图片 ${done}/${images.length}…`);
+      announce(`上传图片 ${done}/${items.length}…`);
     }
     announce('图片已上传', 'ok');
   } catch (error) {

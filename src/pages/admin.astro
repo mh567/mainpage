@@ -81,7 +81,7 @@ const tabs = [
           <div class="media-drop" id="media-drop">
             <div class="thumbs" id="compose-images" hidden></div>
             <p class="media-hint" id="media-hint">
-              点「添加图片」、粘贴或拖进来。多图可拖拽调整顺序。
+              支持 HEIC 和内嵌视频的实况照片。照片和视频分开导出时，请同时选择同名文件。
             </p>
           </div>
 
@@ -98,7 +98,7 @@ const tabs = [
 
           <div class="compose-bar">
             <label class="ghost small upload">
-              <input id="upload-input" type="file" accept="image/*" multiple hidden />
+              <input id="upload-input" type="file" accept="image/*,.heic,.heif,.mov,.mp4" multiple hidden />
               添加图片
             </label>
             <label class="check">

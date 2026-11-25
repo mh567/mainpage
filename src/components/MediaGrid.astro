@@ -1,4 +1,6 @@
 ---
+import { noteMedia } from '../lib/note-media';
+
 /**
  * 朋友圈式图片排版。
  * 1 张：单图限宽限高，不占满整屏。
@@ -29,12 +31,23 @@ const layout =
   count > 0 && (
     <div class="media" data-layout={layout} data-count={count}>
       {shown.map((src, index) => {
+        const { image, motion } = noteMedia(src);
         const img = (
-          <img src={src} alt={alt} loading="lazy" decoding="async" />
+          <img src={image} alt={alt} loading="lazy" decoding="async" />
         );
         return (
           <figure class="media-cell">
-            {linkTo ? <a href={linkTo}>{img}</a> : img}
+            {linkTo ? <a href={linkTo}>{img}</a> : (
+              <a
+                href={image}
+                data-media-preview
+                data-motion={motion}
+                aria-label={motion ? '播放 Live Photo ' + (index + 1) : '放大图片 ' + (index + 1)}
+              >
+                {img}
+                {motion && <span class="media-live" aria-hidden="true">Live</span>}
+              </a>
+            )}
             {overflow > 0 && index === shown.length - 1 && (
               <span class="media-more">+{overflow}</span>
             )}

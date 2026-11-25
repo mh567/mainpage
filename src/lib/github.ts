@@ -187,8 +187,8 @@ export async function writeBase64(
 
 export interface CommitEntry {
   path: string;
-  /** 有 text 就写入，delete 为 true 就删掉这个文件 */
   text?: string;
+  base64?: string;
   delete?: boolean;
 }
 
@@ -205,6 +205,18 @@ export async function commitFiles(
   if (entries.length === 0) {
     return { sha: '', htmlUrl: `https://github.com/${OWNER}/${REPO}/commits/${BRANCH}` };
   }
+
+  const treeEntries = await Promise.all(entries.map(async (entry) => {
+    const file = { path: entry.path, mode: '100644', type: 'blob' };
+    if (entry.delete) return { ...file, sha: null };
+    if (entry.base64 === undefined) return { ...file, content: entry.text ?? '' };
+
+    const blob = await request<{ sha: string }>(token, `/repos/${OWNER}/${REPO}/git/blobs`, {
+      method: 'POST',
+      body: { content: entry.base64, encoding: 'base64' },
+    });
+    return { ...file, sha: blob.sha };
+  }));
 
   const head = await request<{ object: { sha: string }; sha: string }>(
     token,
@@ -224,17 +236,7 @@ export async function commitFiles(
       method: 'POST',
       body: {
         base_tree: commit.tree.sha,
-        tree: entries.map((entry) =>
-          entry.delete
-            ? // tree 里 sha 为 null 表示删除这个路径
-              { path: entry.path, mode: '100644', type: 'blob', sha: null }
-            : {
-                path: entry.path,
-                mode: '100644',
-                type: 'blob',
-                content: entry.text ?? '',
-              },
-        ),
+        tree: treeEntries,
       },
     },
   );
