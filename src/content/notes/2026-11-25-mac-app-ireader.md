@@ -3,7 +3,6 @@ date: 2026-11-25
 images:
   - /media/1795617463758-1711315c.live.heic
 link: https://emolu.cn/inkbuddy/
-draft: true
 ---
 
 做了个mac app，拯救了长期吃灰的掌阅ireader。它可以实时在任意墨水屏电纸书上同步电脑正在播放的音乐歌词，只要电纸书有浏览器就行。
