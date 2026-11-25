@@ -1,7 +1,8 @@
 ---
 date: 2026-11-25
 images:
-  - /uploads/1795613086438-0uj8jy.heic
+  - /media/1795617463758-1711315c.live.heic
+link: https://emolu.cn/inkbuddy/
 draft: true
 ---
 
