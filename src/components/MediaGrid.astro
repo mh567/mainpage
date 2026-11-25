@@ -1,5 +1,5 @@
 ---
-import { noteMedia } from '../lib/note-media';
+import { noteMediaForBuild } from '../lib/note-media-build';
 
 /**
  * 朋友圈式图片排版。
@@ -22,7 +22,8 @@ const total = images.length;
 const shown = max && total > max ? images.slice(0, max) : images;
 const overflow = max && total > max ? total - max : 0;
 
-const count = shown.length;
+const items = await Promise.all(shown.map(noteMediaForBuild));
+const count = items.length;
 const layout =
   count === 1 ? 'single' : count === 2 ? 'duo' : count === 4 ? 'quad' : 'grid';
 ---
@@ -30,8 +31,7 @@ const layout =
 {
   count > 0 && (
     <div class="media" data-layout={layout} data-count={count}>
-      {shown.map((src, index) => {
-        const { image, motion } = noteMedia(src);
+      {items.map(({ image, motion }, index) => {
         const img = (
           <img src={image} alt={alt} loading="lazy" decoding="async" />
         );
