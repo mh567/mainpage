@@ -419,18 +419,43 @@ function readAsBase64(file: Blob): Promise<string> {
 const MAX_EDGE = 1600;
 const COMPRESS_THRESHOLD = 600_000;
 
-function guardImage(image: HTMLImageElement): void {
-  image.addEventListener('error', () => {
-    image.dataset.broken = 'true';
-    image.removeAttribute('src');
-  });
-}
-
-/** 上传后到部署完成前，站点上的 /uploads/... 还是 404，用本地 blob 先顶上。 */
+/** 跨部署等待期间，浏览器能解码的本地图片可以先显示。 */
 const previews = new Map<string, string>();
+const coverRetryDelays = [5_000, 15_000, 30_000, 60_000, 120_000, 240_000];
 
-function displaySrc(src: string): string {
-  return previews.get(src) ?? noteMedia(src).image;
+function loadThumbnail(image: HTMLImageElement, src: string): void {
+  const local = previews.get(src);
+  const cover = noteMedia(src).image;
+  const generatedCover = cover !== src || src.startsWith('/media/');
+  let attempt = 0;
+
+  image.addEventListener('load', () => {
+    delete image.dataset.broken;
+    image.alt = '';
+  });
+  image.addEventListener('error', () => {
+    if (local && image.getAttribute('src') === local) {
+      if (previews.get(src) === local) {
+        previews.delete(src);
+        URL.revokeObjectURL(local);
+      }
+      image.src = cover;
+      return;
+    }
+
+    const delay = generatedCover ? coverRetryDelays[attempt++] : undefined;
+    image.dataset.broken = 'true';
+    image.alt = delay ? '等待生成封面' : '图片暂时无法预览';
+    if (delay) {
+      window.setTimeout(() => {
+        if (!image.isConnected) return;
+        const url = new URL(cover, location.href);
+        url.searchParams.set('cover', String(Date.now()));
+        image.src = url.href;
+      }, delay);
+    }
+  });
+  image.src = local ?? cover;
 }
 
 /**
@@ -557,11 +582,10 @@ function renderImages(): void {
     figure.tabIndex = state.images.length > 1 ? 0 : -1;
 
     const image = document.createElement('img');
-    image.src = displaySrc(src);
     image.alt = '';
     image.loading = 'lazy';
     image.draggable = false;
-    guardImage(image);
+    loadThumbnail(image, src);
 
     const remove = document.createElement('button');
     remove.type = 'button';
@@ -996,10 +1020,9 @@ function renderNotes(): void {
       thumbs.className = 'card-thumbs';
       item.doc.meta.images.slice(0, 3).forEach((src) => {
         const image = document.createElement('img');
-        image.src = displaySrc(src);
         image.alt = '';
         image.loading = 'lazy';
-        guardImage(image);
+        loadThumbnail(image, src);
         thumbs.append(image);
       });
       card.append(thumbs);
@@ -1617,6 +1640,7 @@ el<HTMLButtonElement>('btn-refresh').addEventListener('click', () => {
     openSettings();
     return;
   }
+  renderImages();
   void Promise.all([loadNotes(), loadProjects()]);
 });
 
