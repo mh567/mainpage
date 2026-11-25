@@ -42,10 +42,10 @@ const layout =
                 href={image}
                 data-media-preview
                 data-motion={motion}
-                aria-label={motion ? '播放 Live Photo ' + (index + 1) : '放大图片 ' + (index + 1)}
+                aria-label={motion ? '查看实况照片 ' + (index + 1) : '放大图片 ' + (index + 1)}
               >
                 {img}
-                {motion && <span class="media-live" aria-hidden="true">Live</span>}
+                {motion && <span class="live-photo-badge" aria-hidden="true"><span class="live-photo-mark"></span></span>}
               </a>
             )}
             {overflow > 0 && index === shown.length - 1 && (

@@ -43,6 +43,18 @@ test('thumbnail links on the home and article pages open the shared image previe
   }
 });
 
+test('Live Photo preview offers a ring toggle and loops inline without native controls', () => {
+  const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
+  const motion = html.match(/<video\b[^>]*class="media-preview-video"[^>]*>/)?.[0];
+  assert.ok(motion);
+  for (const attribute of ['loop', 'muted', 'playsinline']) {
+    assert.match(motion, new RegExp('\\b' + attribute + '\\b'));
+  }
+  assert.doesNotMatch(motion, /\bcontrols\b/);
+  assert.match(html, /<button[^>]*class="media-preview-motion"[^>]*aria-pressed="false"[^>]*>\s*<span[^>]*class="live-photo-mark"/);
+  assert.doesNotMatch(html, /class="media-live"[^>]*>Live</);
+});
+
 function box(type, payload = Buffer.alloc(0)) {
   const header = Buffer.alloc(8);
   header.writeUInt32BE(payload.length + 8);

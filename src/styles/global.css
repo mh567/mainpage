@@ -355,16 +355,30 @@ a:hover {
   outline-offset: -3px;
 }
 
-.media-live {
+.live-photo-mark {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 1px dotted currentColor;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 1.2px, currentColor 1.5px 2.3px,
+    transparent 2.6px 4.3px, currentColor 4.7px 5.7px, transparent 6.1px);
+}
+
+.live-photo-badge,
+.media-preview-motion {
   position: absolute;
-  bottom: 6px;
   left: 6px;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: rgba(3, 7, 18, 0.85);
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(3, 7, 18, 0.82);
   color: #fff;
-  font-size: 11px;
-  line-height: 1.3;
+}
+
+.live-photo-badge {
+  padding: 4px;
   pointer-events: none;
 }
 
@@ -403,8 +417,11 @@ a:hover {
   cursor: pointer;
 }
 
-.media-preview-image,
-.media-preview-video {
+.media-preview-photo {
+  position: relative;
+}
+
+.media-preview-image {
   display: block;
   width: auto;
   height: auto;
@@ -414,8 +431,34 @@ a:hover {
   object-fit: contain;
 }
 
-.media-preview-image[hidden],
-.media-preview-video[hidden],
+.media-preview-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.media-preview-video.is-playing {
+  opacity: 1;
+}
+
+.media-preview-motion {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+.media-preview-motion[aria-pressed="true"] {
+  color: #151106;
+  background: var(--champagne, #e4b863);
+  border-color: transparent;
+}
+
+.media-preview-motion[hidden],
 .media-preview-status[hidden] {
   display: none;
 }

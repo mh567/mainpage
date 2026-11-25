@@ -458,6 +458,18 @@ function loadThumbnail(image: HTMLImageElement, src: string): void {
   image.src = local ?? cover;
 }
 
+function addLivePhotoBadge(parent: HTMLElement, src: string): void {
+  if (!noteMedia(src).motion) return;
+  const badge = document.createElement('span');
+  badge.className = 'live-photo-badge';
+  badge.setAttribute('role', 'img');
+  badge.setAttribute('aria-label', '实况照片');
+  const icon = document.createElement('span');
+  icon.className = 'live-photo-mark';
+  badge.append(icon);
+  parent.append(badge);
+}
+
 /**
  * 超过阈值就压到最长边 1600 并转 JPEG。
  * 截图类 PNG 重新编码成 PNG 往往比原图还大，所以这类大图统一走 JPEG。
@@ -605,13 +617,8 @@ function renderImages(): void {
       figure.append(badge);
     }
 
-    if (noteMedia(src).motion) {
-      const live = document.createElement('span');
-      live.className = 'thumb-live';
-      live.textContent = 'Live';
-      figure.append(live);
-    }
     figure.append(image, remove);
+    addLivePhotoBadge(figure, src);
 
     figure.addEventListener('dragstart', (event) => {
       dragIndex = index;
@@ -1023,7 +1030,11 @@ function renderNotes(): void {
         image.alt = '';
         image.loading = 'lazy';
         loadThumbnail(image, src);
-        thumbs.append(image);
+        const thumbnail = document.createElement('span');
+        thumbnail.className = 'card-thumb';
+        thumbnail.append(image);
+        addLivePhotoBadge(thumbnail, src);
+        thumbs.append(thumbnail);
       });
       card.append(thumbs);
     }
