@@ -12,10 +12,11 @@ type MediaFile = {
   source: string;
   format: 'jpeg' | 'mp4' | 'original';
   bytes?: { start: number; end: number };
+  draftOnly?: boolean;
 };
 
 export const getStaticPaths = (async () => {
-  const notes = await getCollection('notes', ({ data }) => !data.draft);
+  const notes = await getCollection('notes');
   const assets = new Map<string, MediaFile>();
   for (const note of notes) {
     for (const src of note.data.images) {
@@ -24,13 +25,17 @@ export const getStaticPaths = (async () => {
       const directory = src.startsWith('/media/') ? NOTE_MEDIA_SOURCE : 'public/uploads';
       const source = join(directory, name);
       if (image !== src || motion) {
-        assets.set(image.slice('/media/'.length), {
-          source,
-          format: isHeic(name) ? 'jpeg' : 'original',
-          bytes: range && { start: 0, end: range.stillEnd },
-        });
+        const filename = image.slice('/media/'.length);
+        if (!note.data.draft || !assets.has(filename)) {
+          assets.set(filename, {
+            source,
+            format: isHeic(name) ? 'jpeg' : 'original',
+            bytes: range && { start: 0, end: range.stillEnd },
+            draftOnly: note.data.draft,
+          });
+        }
       }
-      if (motion) {
+      if (motion && !note.data.draft) {
         const filename = motion.slice('/media/'.length);
         assets.set(filename, {
           source: range ? source : join(NOTE_MEDIA_SOURCE, filename.replace(/\.mp4$/, '.mov')),
@@ -55,7 +60,17 @@ const imageTypes: Record<string, string> = {
 };
 
 export const GET: APIRoute = async ({ props }) => {
-  const { source, format, bytes } = props as MediaFile;
+  const media = props as MediaFile;
+  try {
+    return await renderMedia(media);
+  } catch (error) {
+    if (!media.draftOnly) throw error;
+    console.warn('无法生成草稿图片封面：' + media.source, error);
+    return new Response(null, { status: 404 });
+  }
+};
+
+async function renderMedia({ source, format, bytes }: MediaFile): Promise<Response> {
   if (format === 'original') {
     const extension = source.split('.').at(-1) ?? '';
     const content = await readFile(source);
@@ -88,4 +103,4 @@ export const GET: APIRoute = async ({ props }) => {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
-};
+}
