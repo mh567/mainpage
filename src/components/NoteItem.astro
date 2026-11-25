@@ -3,6 +3,8 @@ import { render } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import MediaGrid from './MediaGrid.astro';
 
+import NoteLink from './NoteLink.astro';
+
 interface Props {
   note: CollectionEntry<'notes'>;
 }
@@ -31,18 +33,7 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
 
     <MediaGrid images={data.images} />
 
-    {
-      data.link && (
-        <a
-          class="note-link"
-          href={data.link}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {data.link}
-        </a>
-      )
-    }
+    <NoteLink href={data.link} />
 
     {
       data.tags.length > 0 && (

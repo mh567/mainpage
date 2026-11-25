@@ -800,8 +800,16 @@ async function publish(): Promise<void> {
 
   const meta = collectNote();
   const body = composeBody.value.trim();
-  if (!body && meta.images.length === 0) {
-    notify('写点内容或加张图片', 'warn');
+  const link = meta.link && composeLink.validity.valid && /^https?:\/\//i.test(meta.link)
+    ? new URL(meta.link)
+    : undefined;
+  if (meta.link && (!link || link.username || link.password)) {
+    notify('请输入有效的 HTTP 或 HTTPS 链接', 'warn');
+    composeLink.focus();
+    return;
+  }
+  if (!body && meta.images.length === 0 && !meta.link) {
+    notify('填写正文、图片或链接', 'warn');
     composeBody.focus();
     return;
   }
@@ -928,7 +936,8 @@ function renderNotes(): void {
     body.className = 'card-body';
     const preview =
       item.doc.meta.title ||
-      item.doc.body.replace(/[#>*_`>-]/g, '').replace(/\s+/g, ' ').trim();
+      item.doc.body.replace(/[#>*_`>-]/g, '').replace(/\s+/g, ' ').trim() ||
+      (item.doc.meta.link ? '（链接短帖）' : '');
     body.textContent = preview.slice(0, 120) || '（无正文）';
 
     const actions = document.createElement('div');
@@ -984,7 +993,7 @@ function emptyState(text: string): HTMLElement {
 function startEditNote(item: RemoteFile & { doc: NoteDoc }): void {
   const hasUnsent =
     !state.editingNote &&
-    (composeBody.value.trim() !== '' || state.images.length > 0);
+    (composeBody.value.trim() !== '' || state.images.length > 0 || composeLink.value.trim() !== '');
   if (hasUnsent && !window.confirm('发帖框里还有没发布的内容，编辑会覆盖它。继续？')) {
     return;
   }

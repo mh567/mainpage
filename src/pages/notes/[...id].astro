@@ -3,6 +3,8 @@ import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import MediaGrid from '../../components/MediaGrid.astro';
 
+import NoteLink from '../../components/NoteLink.astro';
+
 export async function getStaticPaths() {
   const notes = await getCollection('notes', ({ data }) => !data.draft);
   return notes.map((note) => ({
@@ -42,20 +44,7 @@ const dateFmt = new Intl.DateTimeFormat("zh-CN", {
 
         <MediaGrid images={data.images} />
 
-        {
-          data.link && (
-            <p>
-              <a
-                class="note-link"
-                href={data.link}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {data.link}
-              </a>
-            </p>
-          )
-        }
+        {data.link && <p><NoteLink href={data.link} /></p>}
 
         {
           data.tags.length > 0 && (

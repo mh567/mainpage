@@ -433,12 +433,35 @@ a:hover {
 }
 
 .note-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
   margin-top: 6px;
   font-size: 12px;
   letter-spacing: 0.02em;
   color: var(--moonlight);
-  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.note-link-icon {
+  position: relative;
+  flex: 0 0 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.note-link .note-link-icon img {
+  position: absolute;
+  inset: 0;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 0;
+  border-radius: 3px;
+  background: #fff;
+  object-fit: contain;
 }
 
 .note-permalink {
