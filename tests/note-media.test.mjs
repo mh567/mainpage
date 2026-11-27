@@ -43,6 +43,21 @@ test('thumbnail links on the home and article pages open the shared image previe
   }
 });
 
+test('home and article use a smaller WebP cover before opening the Live Photo preview', () => {
+  const original = '/media/1795617463758-1711315c.live.heic.jpg';
+  for (const route of ['index.html', 'notes/2026-11-25-mac-app-ireader/index.html']) {
+    const html = readFileSync(new URL('../dist/' + route, import.meta.url), 'utf8');
+    const cover = html.match(/<a href="([^"]+)"[^>]*data-media-preview[^>]*data-motion="[^"]+\.mp4"[^>]*>\s*<img src="([^"]+)"/);
+    assert.ok(cover);
+    assert.equal(cover[1], original);
+    assert.match(cover[2], /\.webp$/);
+    const still = readFileSync(new URL('../dist' + original, import.meta.url));
+    const thumbnail = readFileSync(new URL('../dist' + cover[2], import.meta.url));
+    assert.equal(thumbnail.toString('ascii', 8, 12), 'WEBP');
+    assert.ok(thumbnail.length < still.length / 4);
+  }
+});
+
 test('Live Photo preview offers a ring toggle and loops inline without native controls', () => {
   const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
   const motion = html.match(/<video\b[^>]*class="media-preview-video"[^>]*>/)?.[0];

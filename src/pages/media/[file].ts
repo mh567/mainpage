@@ -5,12 +5,13 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import type { APIRoute, GetStaticPaths } from 'astro';
 import { getCollection } from 'astro:content';
+import sharp from 'sharp';
 import { isHeic, NOTE_MEDIA_SOURCE } from '../../lib/note-media';
 import { noteMediaForBuild } from '../../lib/note-media-build';
 
 type MediaFile = {
   source: string;
-  format: 'jpeg' | 'mp4' | 'original';
+  format: 'jpeg' | 'mp4' | 'original' | 'webp';
   bytes?: { start: number; end: number };
   draftOnly?: boolean;
 };
@@ -20,10 +21,17 @@ export const getStaticPaths = (async () => {
   const assets = new Map<string, MediaFile>();
   for (const note of notes) {
     for (const src of note.data.images) {
-      const { image, motion, range } = await noteMediaForBuild(src);
+      const { image, motion, range, thumbnail } = await noteMediaForBuild(src);
       const name = src.split('/').at(-1)!;
       const directory = src.startsWith('/media/') ? NOTE_MEDIA_SOURCE : 'public/uploads';
       const source = join(directory, name);
+      if (thumbnail && !note.data.draft) {
+        assets.set(thumbnail.slice('/media/'.length), {
+          source,
+          format: 'webp',
+          bytes: range && { start: 0, end: range.stillEnd },
+        });
+      }
       if (image !== src || motion) {
         const filename = image.slice('/media/'.length);
         if (!note.data.draft || !assets.has(filename)) {
@@ -83,13 +91,27 @@ async function renderMedia({ source, format, bytes }: MediaFile): Promise<Respon
   try {
     let input = resolve(source);
     if (bytes) {
-      const extension = format === 'jpeg' ? source.split('.').at(-1) : 'mp4';
+      const extension = format === 'mp4' ? 'mp4' : source.split('.').at(-1);
       input = join(directory, 'input.' + extension);
       const content = await readFile(source);
       await writeFile(input, content.subarray(bytes.start, bytes.end));
     }
-    const output = join(directory, format === 'jpeg' ? 'photo.jpg' : 'motion.mp4');
     const options = { timeout: 120_000 };
+    if (format === 'webp') {
+      if (isHeic(source)) {
+        const still = join(directory, 'still.png');
+        await run('sips', ['-s', 'format', 'png', '-Z', '600', input, '--out', still], options);
+        input = still;
+      }
+      const thumbnail = await sharp(input, { animated: true })
+        .autoOrient()
+        .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 76 })
+        .toBuffer();
+      return new Response(new Uint8Array(thumbnail), { headers: { 'Content-Type': 'image/webp' } });
+    }
+
+    const output = join(directory, format === 'jpeg' ? 'photo.jpg' : 'motion.mp4');
     if (format === 'jpeg') {
       await run('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '85', input, '--out', output], options);
       // sips can exit successfully after writing only JPEG metadata.

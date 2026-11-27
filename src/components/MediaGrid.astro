@@ -31,9 +31,9 @@ const layout =
 {
   count > 0 && (
     <div class="media" data-layout={layout} data-count={count}>
-      {items.map(({ image, motion }, index) => {
+      {items.map(({ image, motion, thumbnail }, index) => {
         const img = (
-          <img src={image} alt={alt} loading="lazy" decoding="async" />
+          <img src={thumbnail ?? image} alt={alt} loading="lazy" decoding="async" />
         );
         return (
           <figure class="media-cell">

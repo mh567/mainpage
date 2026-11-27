@@ -501,8 +501,8 @@ a:hover {
   display: block;
   width: auto;
   height: auto;
-  max-width: min(100%, 260px);
-  max-height: 200px;
+  max-width: min(100%, 220px);
+  max-height: 160px;
   object-fit: contain;
   border-radius: 12px;
 }
@@ -528,8 +528,8 @@ a:hover {
 
 /* 详情页里的图片可以大一些 */
 .prose .media[data-layout="single"] img {
-  max-width: min(100%, 420px);
-  max-height: 380px;
+  max-width: min(100%, 300px);
+  max-height: 240px;
 }
 
 .prose .media[data-layout="duo"],
