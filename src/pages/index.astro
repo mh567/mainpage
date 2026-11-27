@@ -4,6 +4,7 @@ import Base from '../layouts/Base.astro';
 import MediaPreview from '../components/MediaPreview.astro';
 import ProjectTile from '../components/ProjectTile.astro';
 import Timeline from '../components/Timeline.astro';
+import { getPublishedNotes, NOTES_PER_PAGE } from '../lib/note-feed';
 
 const projects = (await getCollection('projects')).sort(
   (a, b) =>
@@ -11,15 +12,13 @@ const projects = (await getCollection('projects')).sort(
     (b.data.started?.valueOf() ?? 0) - (a.data.started?.valueOf() ?? 0),
 );
 
-const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
-  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
-);
+const notes = await getPublishedNotes();
 
 ---
 
 <Base title="个人主页" description="项目与短帖。">
   <main class="stage">
-    <section class="glass panel" aria-label="动态">
+    <section class="glass panel" id="short-notes" aria-label="动态">
       <header class="panel-head">
         <img
           class="avatar-img"
@@ -38,8 +37,13 @@ const notes = (await getCollection('notes', ({ data }) => !data.draft)).sort(
       <div class="panel-rule" aria-hidden="true"></div>
 
       <div class="feed" tabindex="0">
-        <Timeline notes={notes} />
+        <Timeline notes={notes.slice(0, NOTES_PER_PAGE)} />
       </div>
+      {notes.length > NOTES_PER_PAGE && (
+        <nav class="notes-pagination" aria-label="短帖分页">
+          <a href="/archive/notes/2/" rel="next">更早的短帖</a>
+        </nav>
+      )}
     </section>
 
     <section class="projects" aria-label="项目">

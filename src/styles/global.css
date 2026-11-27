@@ -211,6 +211,23 @@ a:hover {
   margin: 0 auto;
 }
 
+.notes-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-12);
+  max-width: 880px;
+  margin: var(--sp-16) auto 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.notes-pagination a {
+  color: var(--moonlight);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ---------------- feed ---------------- */
 
 .feed {

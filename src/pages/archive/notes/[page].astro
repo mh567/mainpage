@@ -1,0 +1,32 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import Base from '../../../layouts/Base.astro';
+import MediaPreview from '../../../components/MediaPreview.astro';
+import Timeline from '../../../components/Timeline.astro';
+import { getPublishedNotes, NOTES_PER_PAGE } from '../../../lib/note-feed';
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const notes = await getPublishedNotes();
+  return paginate(notes, { pageSize: NOTES_PER_PAGE })
+    .filter(({ props }) => props.page.currentPage > 1);
+}) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { page } = Astro.props;
+const previous = page.currentPage === 2 ? '/#short-notes' : page.url.prev;
+---
+
+<Base title={`短帖归档第 ${page.currentPage} 页 · 个人主页`}>
+  <main class="stage">
+    <section class="glass article" aria-labelledby="archive-heading">
+      <h1 id="archive-heading">短帖归档</h1>
+      <Timeline notes={page.data} />
+      <nav class="notes-pagination" aria-label="短帖分页">
+        <a href={previous} rel="prev">更新的短帖</a>
+        <span>第 {page.currentPage} 页，共 {page.lastPage} 页</span>
+        {page.url.next && <a href={page.url.next} rel="next">更早的短帖</a>}
+      </nav>
+    </section>
+  </main>
+  <MediaPreview />
+</Base>
