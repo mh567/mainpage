@@ -59,6 +59,15 @@ site:
         width: 620
         height: 760
         caption: 自定义视图组合与实时切换
+    - id: devices
+      title: 跨设备可用
+      description: 不限于墨水屏，任意闲置的电子设备只要有浏览器，打开地址即可变身桌面监控副屏。
+      image:
+        src: /project-media/inkbuddy-devices-frame.webp
+        alt: 平板电脑与手机浏览器打开同一地址，分别以横屏与竖屏排版展示 ChatGPT 额度、同步歌词与点阵时钟
+        width: 620
+        height: 760
+        caption: 手机、平板自动适配排版
   links:
     - label: 版本发布
       href: https://github.com/mh567/inkbuddy/releases
