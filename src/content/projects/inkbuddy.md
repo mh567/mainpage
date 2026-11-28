@@ -1,6 +1,6 @@
 ---
 title: InkBuddy
-summary: "唤醒闲置的墨水屏，在桌边安静呈现歌词、时间与 AI 额度。"
+summary: "唤醒闲置的墨水屏，无需在电子书上安装任何软件，用自带浏览器打开地址即可成为 Mac 无线副屏。"
 repo: https://github.com/mh567/inkbuddy
 tags: [macOS, 墨水屏]
 status: active
@@ -8,21 +8,30 @@ order: 3
 site:
   slug: inkbuddy
   headline: 让墨水屏成为 Mac 副屏
-  platform: macOS · 墨水屏
+  platform: macOS · 电子书浏览器打开即用
   accent: "#846744"
   icon: /project-media/inkbuddy-icon.svg
   image:
-    src: /project-media/inkbuddy-hero.webp
-    alt: 墨水屏界面的同步歌词预览
+    src: /project-media/inkbuddy-overview-frame.webp
+    alt: 墨水屏界面的同步歌词与点阵时钟组合预览
     width: 620
     height: 760
-    caption: 实时歌词，随乐而动
+    caption: 歌词与时钟同屏显示
   actions:
     - label: 下载 macOS 版
       href: https://github.com/mh567/inkbuddy/releases/latest/download/InkBuddy-macOS-arm64.dmg
     - label: GitHub 仓库
       href: https://github.com/mh567/inkbuddy
   sections:
+    - id: lyrics
+      title: 同步歌词
+      description: 实时跟随 Mac 上正在播放的音乐，在柔和不刺眼的电子纸上安静呈现当前歌词。
+      image:
+        src: /project-media/inkbuddy-hero.webp
+        alt: 墨水屏界面的同步歌词预览
+        width: 620
+        height: 760
+        caption: 实时歌词，随乐而动
     - id: views
       title: 视图排版
       description: 自由组合屏幕上的每一块内容。在 Mac 上拖拽排布位置与比例，轻点屏幕左右两侧，即可在不同视图间从容切换。
