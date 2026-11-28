@@ -51,8 +51,8 @@ test('one AriaPilot page exposes both platforms and all three artifacts', () => 
 
 test('demo, installation, notes, RSS and admin remain reachable from static output', () => {
   assert.match(read('habu/index.html'), /href="https:\/\/habu\.emolu\.cn\/demo\/"/);
-  assert.match(read('inkbuddy/index.html'), /id="install"/);
-  assert.match(read('inkbuddy/index.html'), /scripts\/install\.sh/);
+  assert.match(read('inkbuddy/index.html'), /InkBuddy-macOS-arm64\.dmg/);
+  assert.match(read('inkbuddy/index.html'), /href="https:\/\/github\.com\/mh567\/inkbuddy"/);
   assert.match(read('rss.xml'), /<rss/);
   assert.match(read('notes/2026-11-08-hello/index.html'), /2026/);
   assert.match(read('admin/index.html'), /id="project-form"/);
