@@ -181,7 +181,11 @@ body.project-page {
   box-shadow: 0 .65rem 1.5rem color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
-.portrait-figure img { max-inline-size: 19rem; }
+.portrait-figure img {
+  max-inline-size: 22rem;
+  border-radius: 0;
+  box-shadow: none;
+}
 .product-figure figcaption { margin-block-start: .6rem; color: var(--muted-ink); font-size: .8rem; }
 
 .project-section {
@@ -240,6 +244,15 @@ body.project-page {
 }
 
 .footer-row > span { font-weight: 750; }
+
+@media (min-width: 50.01rem) {
+  .project-section.has-image:nth-of-type(even) {
+    grid-template-columns: minmax(0, 1.13fr) minmax(0, .87fr);
+  }
+  .project-section.has-image:nth-of-type(even) .product-figure {
+    order: -1;
+  }
+}
 
 @media (max-width: 50rem) {
   .hero.has-image,
