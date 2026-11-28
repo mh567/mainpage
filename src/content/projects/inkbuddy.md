@@ -32,15 +32,6 @@ site:
         width: 620
         height: 760
         caption: 实时歌词，随乐而动
-    - id: views
-      title: 视图排版
-      description: 自由组合屏幕上的每一块内容。在 Mac 上拖拽排布位置与比例，轻点屏幕左右两侧，即可在不同视图间从容切换。
-      image:
-        src: /project-media/inkbuddy-split-frame.webp
-        alt: 点阵时钟与 AI 额度组合在同一个墨水屏视图中的界面预览
-        width: 620
-        height: 760
-        caption: 多视图自由排布
     - id: quota
       title: AI 额度
       description: 支持 AI 额度的查看，目前已涵盖 Codex、Command Code 与 Gemini。余量与重置时间一目了然，无需频繁切出当前工作。
@@ -51,14 +42,23 @@ site:
         height: 760
         caption: Codex、Command Code 与 Gemini 额度看板
     - id: clock
-      title: 时钟样式
+      title: 时钟摆件
       description: 内置经典、点阵与台历三种时钟样式。在电子纸温润的留白里，还原纯粹的桌面时间质感。
       image:
         src: /project-media/inkbuddy-calendar-frame.webp
-        alt: 墨水屏台历时钟样式预览，显示年月、今日日期、星期与时间
+        alt: 墨水屏台历时钟摆件预览，显示年月、今日日期、星期与时间
         width: 620
         height: 760
-        caption: 台历时钟样式
+        caption: 台历时钟摆件
+    - id: views
+      title: 多视图切换
+      description: 支持自定义视图组合，按需排布画面上的不同模块；在 macOS 菜单栏即可实时预览并切换当前视图，也可轻点墨水屏左右两侧从容翻页。
+      image:
+        src: /project-media/inkbuddy-split-frame.webp
+        alt: 点阵时钟与 AI 额度组合在同一个墨水屏视图中的界面预览
+        width: 620
+        height: 760
+        caption: 自定义视图组合与实时切换
   links:
     - label: 版本发布
       href: https://github.com/mh567/inkbuddy/releases
